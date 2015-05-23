@@ -16,11 +16,11 @@ public class Translation implements Constants {
         this.flags = flags;
         this.rawCode = rawCode;
         this.params = params;
-        feminine = BinUtils.hasFlag(flags, FLAG_FEMININE);
-        masculine = BinUtils.hasFlag(flags, FLAG_MASCULINE);
-        neutral = BinUtils.hasFlag(flags, FLAG_NEUTRAL);
-        singular = BinUtils.hasFlag(flags, FLAG_SINGULAR);
-        plural = BinUtils.hasFlag(flags, FLAG_PLURAL);
+        feminine = Utils.hasFlag(flags, FLAG_FEMININE);
+        masculine = Utils.hasFlag(flags, FLAG_MASCULINE);
+        neutral = Utils.hasFlag(flags, FLAG_NEUTRAL);
+        singular = Utils.hasFlag(flags, FLAG_SINGULAR);
+        plural = Utils.hasFlag(flags, FLAG_PLURAL);
     }
 
     public boolean isFeminine() {

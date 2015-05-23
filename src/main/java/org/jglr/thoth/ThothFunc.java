@@ -9,8 +9,10 @@ public class ThothFunc {
     private final int argsNumber;
     private final List<ThothCommandment> instructions;
     private final Translation translation;
+    private final String name;
 
-    public ThothFunc(int argsNumber, List<ThothCommandment> instructions, Translation tr) {
+    public ThothFunc(String name, int argsNumber, List<ThothCommandment> instructions, Translation tr) {
+        this.name = name;
         this.argsNumber = argsNumber;
         this.instructions = instructions;
         this.translation = tr;
@@ -26,5 +28,9 @@ public class ThothFunc {
 
     public Translation getTranslation() {
         return translation;
+    }
+
+    public String getName() {
+        return name;
     }
 }

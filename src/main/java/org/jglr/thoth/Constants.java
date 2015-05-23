@@ -6,7 +6,7 @@ import java.util.Map;
 public interface Constants {
 
     String DEF_KEYWORD = "def";
-    String DEF_END = "|end|";
+    String DEF_END = "#end";
 
     char FEMININE_ID = 'f';
     char MASCULINE_ID = 'm';

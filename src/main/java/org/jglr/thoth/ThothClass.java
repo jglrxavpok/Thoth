@@ -1,15 +1,24 @@
 package org.jglr.thoth;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ThothClass {
     private final Map<String, ThothFunc> functions;
+    private final List<ThothFunc> functionList;
 
     public ThothClass(Map<String, ThothFunc> functions) {
         this.functions = functions;
+        functionList = new ArrayList<>();
+        functions.values().forEach(functionList::add);
     }
 
     public ThothFunc getFunction(String name) {
         return functions.get(name);
+    }
+
+    public List<ThothFunc> getFunctions() {
+        return functionList;
     }
 }

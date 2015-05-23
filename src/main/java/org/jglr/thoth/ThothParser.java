@@ -75,7 +75,7 @@ public class ThothParser implements Constants {
 
                 Translation tr = new Translation(typeFlag, rawCode, params);
                 List<ThothCommandment> instructions = interpret(rawCode, params);
-                ThothFunc function = new ThothFunc(params.length, instructions, tr); // Create a function representing the code given as a translation.
+                ThothFunc function = new ThothFunc(name, params.length, instructions, tr); // Create a function representing the code given as a translation.
                 functions.put(name, function);
             }
         }
