@@ -6,6 +6,7 @@ import java.util.Stack;
 
 public class InterpreterState {
     private final Stack<ThothValue> stack;
+    private final Stack<Boolean> conditionStack;
     public String label;
     public int variable;
     private Map<String, Integer> jumpsDests;
@@ -13,6 +14,7 @@ public class InterpreterState {
 
     public InterpreterState() {
         stack = new Stack<>();
+        conditionStack = new Stack<>();
         jumpsDests = new HashMap<>();
     }
 
@@ -24,6 +26,18 @@ public class InterpreterState {
         if(jumpsDests.containsKey(label))
             return jumpsDests.get(label);
         return -1;
+    }
+
+    public void pushCondition(boolean value) {
+        conditionStack.push(value);
+    }
+
+    public boolean peekCondition() {
+        return conditionStack.peek();
+    }
+
+    public boolean popCondition() {
+        return conditionStack.pop();
     }
 
     public void push(boolean value) {

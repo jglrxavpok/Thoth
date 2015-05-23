@@ -32,12 +32,11 @@ public class FlagInstruction extends ThothCommandment {
         } else {
             state.push(usedParam.getType() != ThothValue.Types.NULL);
         }
-        // TODO: Return content
         return "";
     }
 
     @Override
     public String toString() {
-        return "PARAM "+baseParam;
+        return "FLAG "+baseParam;
     }
 }

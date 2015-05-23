@@ -21,6 +21,6 @@ public class ParamInstruction extends ThothCommandment {
 
     @Override
     public String toString() {
-        return "VAR "+index;
+        return "PARAM "+index;
     }
 }

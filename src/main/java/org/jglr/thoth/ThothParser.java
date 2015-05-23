@@ -213,11 +213,22 @@ public class ThothParser implements Constants {
                 param = null;
             // TODO: '~' or '!?' -> reverses condition
             } else if(c == '?') {
+                String s = buffer.toString();
                 if(gettingField) {
-                    instructions.add(new FlagInstruction(buffer.toString()));
+                    instructions.add(new FlagInstruction(s));
+                } else {
+                    if(!s.isEmpty()) {
+                        if (!params.containsKey(s)) {
+                            throwParserException("Invalid variable name: " + s, i, column, line);
+                        } else {
+                            int index = params.get(s);
+                            instructions.add(new ParamInstruction(index));
+                        }
+                    }
                 }
                 String dest = newNode();
                 rollbackNode();
+                instructions.add(new PushCondition());
                 instructions.add(new JumpNotTrueInsn(dest)); // Jumps to next label in the same level if the condition is not true
                 param = null;
                 buffer.delete(0, buffer.length());

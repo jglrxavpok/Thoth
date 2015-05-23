@@ -14,12 +14,9 @@ public class JumpNotTrueInsn extends ThothCommandment {
 
     @Override
     public String execute(ThothValue[] params, InterpreterState state, ThothInterpreter interpreter) {
-        ThothValue condition = state.pop();
-        if(condition.getType() == ThothValue.Types.BOOL) {
-            if(!(boolean)condition.getValue())
-                interpreter.jump(destination);
+        if(!state.peekCondition()) {
+            interpreter.jump(destination);
         }
-        // TODO
         return "";
     }
 
