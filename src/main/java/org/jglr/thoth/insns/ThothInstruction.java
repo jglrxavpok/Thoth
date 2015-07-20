@@ -1,18 +1,18 @@
 package org.jglr.thoth.insns;
 
 import org.jglr.thoth.Constants;
-import org.jglr.thoth.InterpreterState;
-import org.jglr.thoth.ThothInterpreter;
+import org.jglr.thoth.interpreter.InterpreterState;
+import org.jglr.thoth.interpreter.ThothInterpreter;
 import org.jglr.thoth.ThothValue;
 
-public abstract class ThothCommandment implements Constants {
+public abstract class ThothInstruction implements Constants {
     public enum Type {
         TEXT, CONDITION, VARIABLE, LABEL
     }
 
     private final Type type;
 
-    public ThothCommandment(Type type) {
+    public ThothInstruction(Type type) {
         this.type = type;
     }
 

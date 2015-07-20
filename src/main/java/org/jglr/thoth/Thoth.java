@@ -1,5 +1,11 @@
 package org.jglr.thoth;
 
+import org.jglr.thoth.interpreter.ThothInterpreter;
+import org.jglr.thoth.parser.ThothClass;
+import org.jglr.thoth.parser.ThothFunc;
+import org.jglr.thoth.parser.ThothParser;
+import org.jglr.thoth.parser.ThothParserException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;

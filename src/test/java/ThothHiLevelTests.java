@@ -1,4 +1,6 @@
 import org.jglr.thoth.*;
+import org.jglr.thoth.parser.ThothClass;
+import org.jglr.thoth.parser.ThothParserException;
 import org.junit.Assert;
 import org.junit.Test;
 

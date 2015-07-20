@@ -5,6 +5,7 @@ import java.util.Map;
 
 public interface Constants {
 
+    String DEF_CLASS = "class";
     String DEF_KEYWORD = "def";
     String DEF_END = "#end";
 

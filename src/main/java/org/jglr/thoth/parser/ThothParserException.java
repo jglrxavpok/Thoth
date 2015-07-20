@@ -1,4 +1,4 @@
-package org.jglr.thoth;
+package org.jglr.thoth.parser;
 
 public class ThothParserException extends Exception {
     public ThothParserException(String message) {

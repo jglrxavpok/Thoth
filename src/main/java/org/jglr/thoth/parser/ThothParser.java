@@ -1,11 +1,10 @@
-package org.jglr.thoth;
+package org.jglr.thoth.parser;
 
+import org.jglr.thoth.Constants;
+import org.jglr.thoth.Translation;
 import org.jglr.thoth.insns.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ThothParser implements Constants {
 
@@ -40,6 +39,20 @@ public class ThothParser implements Constants {
     public ThothClass parseRaw(String rawLang) throws ThothParserException {
         inGlobalScope = true;
         Map<String, ThothFunc> functions = new HashMap<>();
+        String className = null;
+        int classNameIndex = seek(rawLang, 0, DEF_CLASS+" ");
+        if(classNameIndex != -1) {
+            int potentialSecond = seek(rawLang, classNameIndex + 1, DEF_CLASS + " ");
+            if(potentialSecond != -1) {
+                throwParserException("A single Thoth file can only define one class!", potentialSecond, 0, 0);
+            }
+            int endOfLine = rawLang.indexOf("\n", classNameIndex);
+            if(endOfLine < 0)
+                endOfLine = rawLang.length();
+            else
+                endOfLine--;
+            className = rawLang.substring(classNameIndex+DEF_CLASS.length()+1, endOfLine);
+        }
         for(int i = 0;i<rawLang.length() && i >= 0;) {
             if (inGlobalScope) {
                 String keyword = DEF_KEYWORD+" ";
@@ -72,14 +85,18 @@ public class ThothParser implements Constants {
                 }
                 String rawCode = rawLang.substring(equalSign + 1, end);
                 i = end+DEF_END.length(); // We move the cursor after the translation to keep reading the other ones
-
                 Translation tr = new Translation(typeFlag, rawCode, params);
-                List<ThothCommandment> instructions = interpret(rawCode, params);
-                ThothFunc function = new ThothFunc(name, params.length, instructions, tr); // Create a function representing the code given as a translation.
+                List<ThothInstruction> instructions = interpret(rawCode, params);
+                List<String> paramList = Arrays.asList(params);
+                ThothFunc function = new ThothFunc(name, paramList, instructions, tr); // Create a function representing the code given as a translation.
                 functions.put(name, function);
+                inGlobalScope = true;
             }
         }
-        return new ThothClass(functions);
+        if(className == null) {
+            className = rawLang.substring(0, 5);
+        }
+        return new ThothClass(className, functions);
     }
 
     /**
@@ -93,12 +110,12 @@ public class ThothParser implements Constants {
      * @throws ThothParserException
      *          Thrown if any error happened while parsing
      */
-    private List<ThothCommandment> interpret(String code, String[] params) throws ThothParserException {
+    private List<ThothInstruction> interpret(String code, String[] params) throws ThothParserException {
         nodeID = 0; // Reset the nodes
         nodeBase = "N"; // ditto
         boolean inCode = false;
         StringBuffer currentText = new StringBuffer();
-        List<ThothCommandment> instructionList = new ArrayList<>();
+        List<ThothInstruction> instructionList = new ArrayList<>();
         instructionList.add(newLabelNode()); // We add the LABEL N0 instruction, all functions start that way
         Map<String, Integer> paramMap = new HashMap<>();
         for(int i = 0;i<params.length;i++) { // Create a map param name to param index
@@ -144,7 +161,7 @@ public class ThothParser implements Constants {
      * @throws ThothParserException
      *          Thrown if any error happened while parsing the embedded code
      */
-    private void createInstructions(List<ThothCommandment> instructions, Map<String, Integer> params, String code) throws ThothParserException {
+    private void createInstructions(List<ThothInstruction> instructions, Map<String, Integer> params, String code) throws ThothParserException {
         StringBuffer buffer = new StringBuffer();
         char[] chars = code.toCharArray();
         boolean gettingField = false; // boolean checking if we are accessing a field of a param by using the '->' operator
@@ -283,7 +300,7 @@ public class ThothParser implements Constants {
         throw new ThothParserException(message+" at index "+index+", column "+column+", line "+line);
     }
 
-    private ThothCommandment newLabelNode() {
+    private ThothInstruction newLabelNode() {
         return new LabelInstruction(nodeBase+nodeID);
     }
 

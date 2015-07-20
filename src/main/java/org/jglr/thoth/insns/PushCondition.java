@@ -1,10 +1,10 @@
 package org.jglr.thoth.insns;
 
-import org.jglr.thoth.InterpreterState;
-import org.jglr.thoth.ThothInterpreter;
+import org.jglr.thoth.interpreter.InterpreterState;
+import org.jglr.thoth.interpreter.ThothInterpreter;
 import org.jglr.thoth.ThothValue;
 
-public class PushCondition extends ThothCommandment {
+public class PushCondition extends ThothInstruction {
     public PushCondition() {
         super(Type.VARIABLE);
     }

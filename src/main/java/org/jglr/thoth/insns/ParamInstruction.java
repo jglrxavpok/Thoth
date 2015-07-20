@@ -1,10 +1,10 @@
 package org.jglr.thoth.insns;
 
-import org.jglr.thoth.ThothInterpreter;
+import org.jglr.thoth.interpreter.ThothInterpreter;
 import org.jglr.thoth.ThothValue;
-import org.jglr.thoth.InterpreterState;
+import org.jglr.thoth.interpreter.InterpreterState;
 
-public class ParamInstruction extends ThothCommandment {
+public class ParamInstruction extends ThothInstruction {
     private final int index;
 
     public ParamInstruction(int index) {
@@ -17,6 +17,10 @@ public class ParamInstruction extends ThothCommandment {
         state.variable = index;
         state.push(params[index]);
         return "";
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     @Override

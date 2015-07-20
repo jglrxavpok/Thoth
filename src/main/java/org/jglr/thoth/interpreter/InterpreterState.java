@@ -1,4 +1,6 @@
-package org.jglr.thoth;
+package org.jglr.thoth.interpreter;
+
+import org.jglr.thoth.ThothValue;
 
 import java.util.HashMap;
 import java.util.Map;

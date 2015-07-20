@@ -1,7 +1,10 @@
-package org.jglr.thoth;
+package org.jglr.thoth.interpreter;
 
+import org.jglr.thoth.NullValue;
+import org.jglr.thoth.parser.ThothFunc;
+import org.jglr.thoth.ThothValue;
 import org.jglr.thoth.insns.LabelInstruction;
-import org.jglr.thoth.insns.ThothCommandment;
+import org.jglr.thoth.insns.ThothInstruction;
 
 import java.util.List;
 
@@ -37,7 +40,7 @@ public class ThothInterpreter {
             actualParams[i] = new NullValue();
         }
 
-        List<ThothCommandment> insns = function.getInstructions();
+        List<ThothInstruction> insns = function.getInstructions();
         computeJumpsDestinations(insns);
         state.insnPointer = 0;
         StringBuilder builder = new StringBuilder();
@@ -45,7 +48,7 @@ public class ThothInterpreter {
             if(state.insnPointer < 0) {
                 throw new RuntimeException("Tried to jump to wrong label: "+state.label);
             }
-            ThothCommandment insn = insns.get(state.insnPointer);
+            ThothInstruction insn = insns.get(state.insnPointer);
             String partialResult = insn.execute(actualParams, state, this);
             builder.append(partialResult);
         }
@@ -57,11 +60,11 @@ public class ThothInterpreter {
      * @param insns
      *      The list of instructions in which to search for labels
      */
-    private void computeJumpsDestinations(List<ThothCommandment> insns) {
+    private void computeJumpsDestinations(List<ThothInstruction> insns) {
         for(int i = 0;i<insns.size();i++) {
-            ThothCommandment insn = insns.get(i);
+            ThothInstruction insn = insns.get(i);
             System.out.println(insn);
-            if(insn.getType() == ThothCommandment.Type.LABEL) {
+            if(insn.getType() == ThothInstruction.Type.LABEL) {
                 LabelInstruction labelInsn = (LabelInstruction)insn;
                 state.addJumpLocation(labelInsn.getLabel(), i);
             }

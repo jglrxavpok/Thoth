@@ -1,4 +1,4 @@
-package org.jglr.thoth;
+package org.jglr.thoth.parser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,8 +7,10 @@ import java.util.Map;
 public class ThothClass {
     private final Map<String, ThothFunc> functions;
     private final List<ThothFunc> functionList;
+    private String name;
 
-    public ThothClass(Map<String, ThothFunc> functions) {
+    public ThothClass(String name, Map<String, ThothFunc> functions) {
+        this.name = name;
         this.functions = functions;
         functionList = new ArrayList<>();
         functions.values().forEach(functionList::add);
@@ -20,5 +22,9 @@ public class ThothClass {
 
     public List<ThothFunc> getFunctions() {
         return functionList;
+    }
+
+    public String getName() {
+        return name;
     }
 }

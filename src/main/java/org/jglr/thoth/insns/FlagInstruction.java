@@ -1,8 +1,10 @@
 package org.jglr.thoth.insns;
 
 import org.jglr.thoth.*;
+import org.jglr.thoth.interpreter.InterpreterState;
+import org.jglr.thoth.interpreter.ThothInterpreter;
 
-public class FlagInstruction extends ThothCommandment {
+public class FlagInstruction extends ThothInstruction {
     private final int flags;
     private final String baseParam;
 

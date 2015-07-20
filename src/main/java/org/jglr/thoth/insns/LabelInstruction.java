@@ -1,10 +1,10 @@
 package org.jglr.thoth.insns;
 
-import org.jglr.thoth.InterpreterState;
-import org.jglr.thoth.ThothInterpreter;
+import org.jglr.thoth.interpreter.InterpreterState;
+import org.jglr.thoth.interpreter.ThothInterpreter;
 import org.jglr.thoth.ThothValue;
 
-public class LabelInstruction extends ThothCommandment {
+public class LabelInstruction extends ThothInstruction {
     private final String label;
 
     public LabelInstruction(String label) {

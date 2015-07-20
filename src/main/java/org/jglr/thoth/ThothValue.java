@@ -6,11 +6,15 @@ public class ThothValue {
         BOOL, TEXT, TRANSLATION, NULL
     }
 
-    private final Object value;
+    private Object value;
     private final Types type;
 
     public ThothValue(Types type, Object value) {
         this.type = type;
+        this.value = value;
+    }
+
+    public void setValue(Object value) {
         this.value = value;
     }
 
