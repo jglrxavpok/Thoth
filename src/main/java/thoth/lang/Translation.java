@@ -50,6 +50,14 @@ public class Translation implements Constants {
         return flags;
     }
 
+    public boolean hasCorrectFlags(int flags) {
+        return (this.flags | flags) == this.flags;
+    }
+
+    private boolean hasFlag(int i) {
+        return (flags & (1 << i)) != 0;
+    }
+
     public void setRaw(String raw) {
         this.raw = raw;
     }
@@ -64,5 +72,13 @@ public class Translation implements Constants {
 
     public String toString() {
         return getRaw();
+    }
+
+    public static Translation create(String s, int... flags) {
+        int flagsValue = 0;
+        for(int flag : flags) {
+            flagsValue |= flag;
+        }
+        return new Translation(flagsValue, s, new String[0]);
     }
 }

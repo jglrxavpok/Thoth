@@ -1,4 +1,4 @@
-class TestClass
+class thothtest.TestClass
 def test0=Hello world!#end
 
 def test1(arg1, arg2)=Hello world! |arg1| |arg1| |arg2|#end

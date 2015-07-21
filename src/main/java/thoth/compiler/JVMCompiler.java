@@ -2,28 +2,31 @@ package thoth.compiler;
 
 import org.objectweb.asm.util.CheckClassAdapter;
 import thoth.Constants;
-import thoth.lang.ThothValue;
+import thoth.Utils;
+import thoth.lang.*;
 import thoth.insns.*;
-import thoth.lang.ThothClass;
-import thoth.lang.ThothFunc;
 import org.objectweb.asm.*;
-import thoth.lang.Translation;
+import thoth.parser.ThothParser;
+import thoth.parser.ThothParserException;
 import thothtest.TestClass;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.*;
 
 public class JVMCompiler implements Opcodes {
 
+    private static final Type SET_TYPE = Type.getType(TranslationSet.class);
+    private static final String SET_INTERNAL = Type.getInternalName(TranslationSet.class);
     private static final Type TRANSLATION_TYPE = Type.getType(Translation.class);
     private static final String TRANSLATION_INTERNAL = Type.getInternalName(Translation.class);
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final Type BUILDER_TYPE = Type.getType(StringBuilder.class);
     private final Stack<Integer> stack;
     private final List<String> jumpedTo;
+    private final ThothParser parser;
     private String className;
     private int localsCount;
     private String interClassName;
@@ -31,22 +34,41 @@ public class JVMCompiler implements Opcodes {
     public JVMCompiler() {
         stack = new Stack<>();
         jumpedTo = new ArrayList<>();
-        TestClass test = new TestClass();
-        Translation a = new Translation(Constants.FLAG_FEMININE, "a", new String[0]);
-        Translation b = new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "b", new String[0]);
-        Translation c = new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "c", new String[0]);
-        System.out.println(test.foo1(a, b, c));
+        parser = new ThothParser();
     }
 
-    public void compile(ThothClass clazz) {
-        className = "thothtest/" + clazz.getName();
+    public byte[] compileClass(ThothClass clazz) {
+        return compileClass(clazz, false);
+    }
+
+    public byte[] compileClass(ThothClass clazz, boolean debug) {
+        className = clazz.getName();
         interClassName = Type.getType(className).getInternalName();
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         System.out.println("Compiling " + clazz.getName());
-        writer.visit(V1_8, ACC_PUBLIC, className, null, "java/lang/Object", new String[0]);
-        writer.visitSource("thothtest/"+clazz.getName() + ".class", "halp");
+        writer.visit(V1_8, ACC_PUBLIC, className, null, SET_INTERNAL, new String[0]);
+        writer.visitSource(clazz.getName() + ".class", null);
         writer.visitField(ACC_PRIVATE, "_builder", BUILDER_TYPE.getDescriptor(), null, null);
         buildConstructor(clazz, writer);
+
+        // Register handles
+        MethodVisitor handleMV = writer.visitMethod(ACC_PUBLIC, "initHandles",
+                Type.getMethodDescriptor(Type.VOID_TYPE), null, new String[0]);
+        handleMV.visitCode();
+
+        for(ThothFunc func : clazz.getFunctions()) {
+            handleMV.visitLabel(new Label());
+            handleMV.visitVarInsn(ALOAD, 0); // this
+            handleMV.visitLdcInsn(func.getName());
+            handleMV.visitLdcInsn(func.getArgsNumber());
+            handleMV.visitMethodInsn(INVOKEVIRTUAL, SET_INTERNAL, "registerHandle", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.INT_TYPE), false);
+        }
+
+        handleMV.visitInsn(RETURN);
+
+        handleMV.visitMaxs(0,0);
+        handleMV.visitEnd();
+
         for(ThothFunc func : clazz.getFunctions()) {
             int paramIndex = 1;
             paramIndex += func.getArgsNumber();
@@ -115,36 +137,22 @@ public class JVMCompiler implements Opcodes {
             mv.visitEnd();
         }
         writer.visitEnd();
-        try {
-            File file = new File("./testscompiled/thothtest/", "TestClass.class");
-            if(!file.getParentFile().exists())
-                file.getParentFile().mkdirs();
-            if(file.exists())
-                file.delete();
-            file.createNewFile();
-            byte[] byteArray = writer.toByteArray();
+
+        byte[] byteArray = writer.toByteArray();
+        if(debug) {
             PrintWriter pw = new PrintWriter(System.out);
             CheckClassAdapter.verify(new ClassReader(byteArray), true, pw);
-            FileOutputStream out = new FileOutputStream(file);
-            out.write(byteArray);
-            out.flush();
-            out.close();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        return byteArray;
     }
 
     private void compileFunction(ThothFunc func, MethodVisitor mv) {
         Map<String, Label> labelMap = new HashMap<>();
-        System.out.println("==== "+func.getName()+" ====");
         for(ThothInstruction insn : func.getInstructions()) {
-            System.out.println(insn);
             if(insn instanceof LabelInstruction) {
                 String label = ((LabelInstruction) insn).getLabel();
                 if(!labelMap.containsKey(label))
                     labelMap.put(label, new Label());
-                else
-                    System.out.println("fetched "+label);
                 mv.visitLabel(labelMap.get(label));
             } else if(insn instanceof TextInstruction) {
                 String text = ((TextInstruction) insn).getValue();
@@ -166,12 +174,10 @@ public class JVMCompiler implements Opcodes {
                     String dest = ((JumpNotTrueInsn) insn).getDestination();
                     Label destination = labelMap.getOrDefault(dest, new Label());
                     labelMap.put(dest, destination);
-                    System.out.println("jump to " + dest);
                     mv.visitLabel(new Label());
                     mv.visitVarInsn(ALOAD, var + 1);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "getFlags", Type.getMethodDescriptor(Type.INT_TYPE), false);
                     mv.visitLdcInsn(-val);
-                    mv.visitInsn(IAND);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "hasCorrectFlags", Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.INT_TYPE), false);
                     mv.visitJumpInsn(IFEQ, destination);
                     mv.visitInsn(POP);
                     mv.visitLabel(new Label());
@@ -179,14 +185,6 @@ public class JVMCompiler implements Opcodes {
                 }
             }
         }
-    }
-
-    private Object[] fillWithLocals(int localsCount) {
-        Object[] result = new Object[localsCount];
-        for(int i = 0;i<localsCount;i++) {
-            result[i] = TOP;
-        }
-        return result;
     }
 
     private void addText(int varIndex, MethodVisitor mv) {
@@ -218,7 +216,7 @@ public class JVMCompiler implements Opcodes {
         mv.visitCode();
         mv.visitLabel(new Label());
         mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, OBJECT_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
+        mv.visitMethodInsn(INVOKESPECIAL, SET_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
 
         mv.visitLabel(new Label());
         mv.visitVarInsn(ALOAD, 0);
@@ -239,5 +237,51 @@ public class JVMCompiler implements Opcodes {
             types[i] = TRANSLATION_TYPE;
         }
         return types;
+    }
+
+    public byte[] compile(URL fileLocation) throws IOException, ThothParserException {
+        return compile(fileLocation, false);
+    }
+
+    public byte[] compile(URL fileLocation, boolean debug) throws IOException, ThothParserException {
+        InputStream input = fileLocation.openStream();
+        return compile(input, debug);
+    }
+
+    public byte[] compile(InputStream fileLocation) throws IOException, ThothParserException {
+        return compile(fileLocation, false);
+    }
+
+    public byte[] compile(InputStream fileLocation, boolean debug) throws IOException, ThothParserException {
+        String code = Utils.readString(fileLocation, "UTF-8");
+        return compile(code, debug);
+    }
+
+    public byte[] compile(String rawCode) throws ThothParserException {
+        return compile(rawCode, false);
+    }
+
+    public byte[] compile(String rawCode, boolean debug) throws ThothParserException {
+        return compileClass(parser.parseRaw(rawCode), debug);
+    }
+
+    public Class<? extends TranslationSet> defineClass(String name, byte[] classData) throws InvocationTargetException, IllegalAccessException {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        if(cl == null) {
+            cl = ClassLoader.getSystemClassLoader();
+        }
+        try {
+            Method m = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
+            m.setAccessible(true);
+            Class<?> result = (Class<?>) m.invoke(cl, name, classData, 0, classData.length);
+            if(TranslationSet.class.isAssignableFrom(result)) {
+                return (Class<? extends TranslationSet>)result;
+            } else {
+                throw new IllegalArgumentException("JVMCompiler does not allow you to define non-Thoth classes");
+            }
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

@@ -10,7 +10,7 @@ public class ThothClass {
     private String name;
 
     public ThothClass(String name, Map<String, ThothFunc> functions) {
-        this.name = name;
+        this.name = name.replace(".", "/");
         this.functions = functions;
         functionList = new ArrayList<>();
         functions.values().forEach(functionList::add);
