@@ -1,9 +1,8 @@
-import org.jglr.thoth.Constants;
-import org.jglr.thoth.Thoth;
-import org.jglr.thoth.compiler.JVMCompiler;
-import org.jglr.thoth.parser.ThothClass;
-import org.jglr.thoth.parser.ThothParserException;
-import org.junit.Assert;
+import thoth.Constants;
+import thoth.Thoth;
+import thoth.compiler.JVMCompiler;
+import thoth.lang.ThothClass;
+import thoth.parser.ThothParserException;
 import org.junit.Test;
 
 import java.io.IOException;

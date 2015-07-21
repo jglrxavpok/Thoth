@@ -1,4 +1,4 @@
-package org.jglr.thoth.parser;
+package thoth.lang;
 
 import java.util.ArrayList;
 import java.util.List;

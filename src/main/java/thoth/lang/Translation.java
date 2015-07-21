@@ -1,4 +1,7 @@
-package org.jglr.thoth;
+package thoth.lang;
+
+import thoth.Constants;
+import thoth.Utils;
 
 public class Translation implements Constants {
 

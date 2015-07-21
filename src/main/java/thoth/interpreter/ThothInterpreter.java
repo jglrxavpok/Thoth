@@ -1,10 +1,10 @@
-package org.jglr.thoth.interpreter;
+package thoth.interpreter;
 
-import org.jglr.thoth.NullValue;
-import org.jglr.thoth.parser.ThothFunc;
-import org.jglr.thoth.ThothValue;
-import org.jglr.thoth.insns.LabelInstruction;
-import org.jglr.thoth.insns.ThothInstruction;
+import thoth.lang.NullValue;
+import thoth.lang.ThothFunc;
+import thoth.lang.ThothValue;
+import thoth.insns.LabelInstruction;
+import thoth.insns.ThothInstruction;
 
 import java.util.List;
 

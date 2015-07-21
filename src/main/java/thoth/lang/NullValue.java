@@ -1,4 +1,4 @@
-package org.jglr.thoth;
+package thoth.lang;
 
 public class NullValue extends ThothValue {
     public NullValue() {

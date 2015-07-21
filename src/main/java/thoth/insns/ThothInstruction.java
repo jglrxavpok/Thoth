@@ -1,9 +1,9 @@
-package org.jglr.thoth.insns;
+package thoth.insns;
 
-import org.jglr.thoth.Constants;
-import org.jglr.thoth.interpreter.InterpreterState;
-import org.jglr.thoth.interpreter.ThothInterpreter;
-import org.jglr.thoth.ThothValue;
+import thoth.Constants;
+import thoth.interpreter.InterpreterState;
+import thoth.interpreter.ThothInterpreter;
+import thoth.lang.ThothValue;
 
 public abstract class ThothInstruction implements Constants {
     public enum Type {

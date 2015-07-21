@@ -1,4 +1,4 @@
-package org.jglr.thoth;
+package thoth;
 
 import java.util.HashMap;
 import java.util.Map;

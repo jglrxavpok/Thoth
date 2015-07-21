@@ -1,10 +1,11 @@
-package org.jglr.thoth;
+package thoth;
 
-import org.jglr.thoth.interpreter.ThothInterpreter;
-import org.jglr.thoth.parser.ThothClass;
-import org.jglr.thoth.parser.ThothFunc;
-import org.jglr.thoth.parser.ThothParser;
-import org.jglr.thoth.parser.ThothParserException;
+import thoth.interpreter.ThothInterpreter;
+import thoth.lang.ThothValue;
+import thoth.lang.ThothClass;
+import thoth.lang.ThothFunc;
+import thoth.parser.ThothParser;
+import thoth.parser.ThothParserException;
 
 import java.io.IOException;
 import java.io.InputStream;

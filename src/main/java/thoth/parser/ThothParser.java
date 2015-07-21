@@ -1,8 +1,10 @@
-package org.jglr.thoth.parser;
+package thoth.parser;
 
-import org.jglr.thoth.Constants;
-import org.jglr.thoth.Translation;
-import org.jglr.thoth.insns.*;
+import thoth.Constants;
+import thoth.lang.ThothClass;
+import thoth.lang.ThothFunc;
+import thoth.lang.Translation;
+import thoth.insns.*;
 
 import java.util.*;
 

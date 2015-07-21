@@ -1,9 +1,12 @@
-import org.jglr.thoth.*;
-import org.jglr.thoth.interpreter.ThothInterpreter;
-import org.jglr.thoth.parser.ThothClass;
-import org.jglr.thoth.parser.ThothFunc;
-import org.jglr.thoth.parser.ThothParser;
-import org.jglr.thoth.parser.ThothParserException;
+import thoth.Constants;
+import thoth.lang.NullValue;
+import thoth.lang.ThothValue;
+import thoth.lang.Translation;
+import thoth.interpreter.ThothInterpreter;
+import thoth.lang.ThothClass;
+import thoth.lang.ThothFunc;
+import thoth.parser.ThothParser;
+import thoth.parser.ThothParserException;
 import org.junit.Assert;
 import org.junit.Test;
 

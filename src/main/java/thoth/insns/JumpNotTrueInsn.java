@@ -1,8 +1,8 @@
-package org.jglr.thoth.insns;
+package thoth.insns;
 
-import org.jglr.thoth.interpreter.ThothInterpreter;
-import org.jglr.thoth.ThothValue;
-import org.jglr.thoth.interpreter.InterpreterState;
+import thoth.interpreter.ThothInterpreter;
+import thoth.lang.ThothValue;
+import thoth.interpreter.InterpreterState;
 
 public class JumpNotTrueInsn extends ThothInstruction {
     private final String destination;

@@ -1,7 +1,7 @@
-package org.jglr.thoth.parser;
+package thoth.lang;
 
-import org.jglr.thoth.Translation;
-import org.jglr.thoth.insns.ThothInstruction;
+import thoth.lang.Translation;
+import thoth.insns.ThothInstruction;
 
 import java.util.List;
 

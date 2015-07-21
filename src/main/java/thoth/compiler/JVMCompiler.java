@@ -1,11 +1,10 @@
-package org.jglr.thoth.compiler;
+package thoth.compiler;
 
-import org.jglr.thoth.ThothValue;
-import org.jglr.thoth.insns.*;
-import org.jglr.thoth.parser.ThothClass;
-import org.jglr.thoth.parser.ThothFunc;
+import thoth.lang.ThothValue;
+import thoth.insns.*;
+import thoth.lang.ThothClass;
+import thoth.lang.ThothFunc;
 import org.objectweb.asm.*;
-import thoth.TestClass;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -28,7 +27,7 @@ public class JVMCompiler implements Opcodes {
     }
 
     public void compile(ThothClass clazz) {
-        className = "thoth/" + clazz.getName();
+        className = "thothtest/" + clazz.getName();
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         System.out.println("Compiling " + clazz.getName());
         writer.visit(V1_8, ACC_PUBLIC, className, null, "java/lang/Object", new String[0]);
@@ -89,7 +88,7 @@ public class JVMCompiler implements Opcodes {
             mv.visitEnd();
         }
         try {
-            File file = new File("./testscompiled/thoth/", "TestClass.class");
+            File file = new File("./testscompiled/thothtest/", "TestClass.class");
             if(!file.getParentFile().exists())
                 file.getParentFile().mkdirs();
             if(file.exists())
