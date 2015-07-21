@@ -27,6 +27,10 @@ public class FlagInstruction extends ThothInstruction {
         this.flags = typeFlag;
     }
 
+    public int getFlags() {
+        return flags;
+    }
+
     @Override
     public String execute(ThothValue[] params, InterpreterState state, ThothInterpreter interpreter) {
         ThothValue usedParam = params[state.variable];

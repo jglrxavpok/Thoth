@@ -20,6 +20,10 @@ public class JumpNotTrueInsn extends ThothInstruction {
         return "";
     }
 
+    public String getDestination() {
+        return destination;
+    }
+
     @Override
     public String toString() {
         return "JUMP IF NOT "+destination;
