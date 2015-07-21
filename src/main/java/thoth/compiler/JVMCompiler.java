@@ -18,25 +18,24 @@ import java.util.*;
 
 public class JVMCompiler implements Opcodes {
 
-    private static final Type VALUE_TYPE = Type.getType(ThothValue.class);
-    private static final String VALUE_INTERNAL = Type.getInternalName(ThothValue.class);
+    private static final Type TRANSLATION_TYPE = Type.getType(Translation.class);
+    private static final String TRANSLATION_INTERNAL = Type.getInternalName(Translation.class);
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final Type BUILDER_TYPE = Type.getType(StringBuilder.class);
     private final Stack<Integer> stack;
     private final List<String> jumpedTo;
     private String className;
     private int localsCount;
-    private int flagLocal;
     private String interClassName;
 
     public JVMCompiler() {
         stack = new Stack<>();
         jumpedTo = new ArrayList<>();
         TestClass test = new TestClass();
-        ThothValue a = new ThothValue(ThothValue.Types.TRANSLATION, new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "a", new String[0]));
-        ThothValue b = new ThothValue(ThothValue.Types.TRANSLATION, new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "b", new String[0]));
-        ThothValue c = new ThothValue(ThothValue.Types.TRANSLATION, new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "c", new String[0]));
-        test.foo1(a, b, c);
+        Translation a = new Translation(Constants.FLAG_FEMININE, "a", new String[0]);
+        Translation b = new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "b", new String[0]);
+        Translation c = new Translation(Constants.FLAG_FEMININE | Constants.FLAG_PLURAL, "c", new String[0]);
+        System.out.println(test.foo1(a, b, c));
     }
 
     public void compile(ThothClass clazz) {
@@ -51,18 +50,15 @@ public class JVMCompiler implements Opcodes {
         for(ThothFunc func : clazz.getFunctions()) {
             int paramIndex = 1;
             paramIndex += func.getArgsNumber();
-            flagLocal = paramIndex++;
             int resultVar = paramIndex++;
             localsCount = paramIndex;
 
             MethodVisitor mv = writer.visitMethod(ACC_PUBLIC, func.getName(),
-                    Type.getMethodDescriptor(VALUE_TYPE, createArgsParam(func)), null, new String[0]);
+                    Type.getMethodDescriptor(TRANSLATION_TYPE, createArgsParam(func)), null, new String[0]);
             mv.visitCode();
             Label startLabel = new Label();
             mv.visitLabel(startLabel);
 
-            mv.visitLdcInsn(func.getTranslation().getFlags());
-            mv.visitIntInsn(ISTORE, flagLocal); // creates return flags
             mv.visitLabel(new Label());
 
             // Empty '_builder' buffer
@@ -74,11 +70,19 @@ public class JVMCompiler implements Opcodes {
             mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "length", Type.getMethodDescriptor(Type.INT_TYPE), false); // calls length
             mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "delete", Type.getMethodDescriptor(BUILDER_TYPE, Type.INT_TYPE, Type.INT_TYPE), false); // calls delete(0, length)
 
-            mv.visitTypeInsn(NEW, VALUE_INTERNAL);
+            mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
             mv.visitInsn(DUP);
-            loadEnum(mv, ThothValue.Types.class, ThothValue.Types.TRANSLATION);
+            mv.visitLdcInsn(func.getTranslation().getFlags());
             mv.visitInsn(ACONST_NULL);
-            mv.visitMethodInsn(INVOKESPECIAL, VALUE_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(ThothValue.Types.class), OBJECT_TYPE), false);
+            mv.visitLdcInsn(func.getArgsNumber());
+            mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(String.class));
+            for(int i = 0;i<func.getArgsNumber();i++) {
+                mv.visitInsn(DUP);
+                mv.visitLdcInsn(i);
+                mv.visitLdcInsn(func.getArgumentNames().get(i));
+                mv.visitInsn(AASTORE);
+            }
+            mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.getType(String.class), Type.getType(String[].class)), false);
             mv.visitVarInsn(ASTORE, resultVar);
             mv.visitLabel(new Label());
 
@@ -89,27 +93,10 @@ public class JVMCompiler implements Opcodes {
             // dump buffer content into __result__
             mv.visitVarInsn(ALOAD, resultVar); // get __result__
 
-            String transName = Type.getInternalName(Translation.class);
-            mv.visitTypeInsn(NEW, transName);
-            mv.visitInsn(DUP);
-
-            mv.visitIntInsn(ILOAD, flagLocal); // get __returnFlags__
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, interClassName, "_builder", BUILDER_TYPE.getDescriptor());
             mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false);
-
-            mv.visitLdcInsn(func.getArgsNumber());
-            mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(String.class));
-          /*  for(int i = 0;i<func.getArgsNumber();i++) {
-                mv.visitInsn(DUP);
-                mv.visitLdcInsn(i);
-                mv.visitLdcInsn(func.getArgumentNames().get(i));
-                mv.visitInsn(AASTORE);
-            }*/
-
-            mv.visitMethodInsn(INVOKESPECIAL, transName, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.getType(String.class), Type.getType(String[].class)), false);
-
-            mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_TYPE.getInternalName(), "setValue", Type.getMethodDescriptor(Type.VOID_TYPE, OBJECT_TYPE), false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "setRaw", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class)), false);
 
             mv.visitLabel(new Label());
             mv.visitVarInsn(ALOAD, resultVar);
@@ -119,10 +106,9 @@ public class JVMCompiler implements Opcodes {
 
             paramIndex = 1;
             for(String param : func.getArgumentNames()) {
-                mv.visitLocalVariable(param, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), paramIndex++);
+                mv.visitLocalVariable(param, TRANSLATION_TYPE.getDescriptor(), null, new Label(), new Label(), paramIndex++);
             }
-            mv.visitLocalVariable("__returnFlags__", Type.INT_TYPE.getDescriptor(), null, startLabel, endLabel, flagLocal);
-            mv.visitLocalVariable("__result__", VALUE_TYPE.getDescriptor(), null, startLabel, endLabel, resultVar);
+            mv.visitLocalVariable("__result__", TRANSLATION_TYPE.getDescriptor(), null, startLabel, endLabel, resultVar);
 
 
             mv.visitMaxs(0, 0);
@@ -183,10 +169,7 @@ public class JVMCompiler implements Opcodes {
                     System.out.println("jump to " + dest);
                     mv.visitLabel(new Label());
                     mv.visitVarInsn(ALOAD, var + 1);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_INTERNAL, "getValue", Type.getMethodDescriptor(OBJECT_TYPE), false);
-                    String transName = Type.getInternalName(Translation.class);
-                    mv.visitTypeInsn(CHECKCAST, transName);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, transName, "getFlags", Type.getMethodDescriptor(Type.INT_TYPE), false);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "getFlags", Type.getMethodDescriptor(Type.INT_TYPE), false);
                     mv.visitLdcInsn(-val);
                     mv.visitInsn(IAND);
                     mv.visitJumpInsn(IFEQ, destination);
@@ -212,7 +195,6 @@ public class JVMCompiler implements Opcodes {
         mv.visitVarInsn(ALOAD, 0); // get 'this'
         mv.visitFieldInsn(GETFIELD, className, "_builder", BUILDER_TYPE.getDescriptor()); // get '_builder'
         mv.visitVarInsn(ALOAD, varIndex + 1); // add 1 as it starts with 'this' at 0
-        mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_TYPE.getInternalName(), "getValue", Type.getMethodDescriptor(Type.getType(Object.class)), false); // call 'getValue'
         mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Object.class), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false); // call 'toString'
         mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "append", Type.getMethodDescriptor(BUILDER_TYPE, Type.getType(String.class)), false); // call 'append(String)'
     }
@@ -254,7 +236,7 @@ public class JVMCompiler implements Opcodes {
     private Type[] createArgsParam(ThothFunc func) {
         Type[] types = new Type[func.getArgsNumber()];
         for(int i = 0;i<types.length;i++) {
-            types[i] = VALUE_TYPE;
+            types[i] = TRANSLATION_TYPE;
         }
         return types;
     }

@@ -10,7 +10,7 @@ public class Translation implements Constants {
     private final boolean neutral;
     private final boolean plural;
     private final boolean singular;
-    private final String raw;
+    private String raw;
     private final String[] params;
 
     private int flags;
@@ -48,6 +48,10 @@ public class Translation implements Constants {
 
     public int getFlags() {
         return flags;
+    }
+
+    public void setRaw(String raw) {
+        this.raw = raw;
     }
 
     public String getRaw() {
