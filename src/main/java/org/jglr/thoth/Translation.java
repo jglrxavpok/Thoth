@@ -7,14 +7,14 @@ public class Translation implements Constants {
     private final boolean neutral;
     private final boolean plural;
     private final boolean singular;
-    private final String rawCode;
+    private final String raw;
     private final String[] params;
 
     private int flags;
 
-    public Translation(int flags, String rawCode, String[] params) {
+    public Translation(int flags, String raw, String[] params) {
         this.flags = flags;
-        this.rawCode = rawCode;
+        this.raw = raw;
         this.params = params;
         feminine = Utils.hasFlag(flags, FLAG_FEMININE);
         masculine = Utils.hasFlag(flags, FLAG_MASCULINE);
@@ -47,11 +47,15 @@ public class Translation implements Constants {
         return flags;
     }
 
-    public String getRawCode() {
-        return rawCode;
+    public String getRaw() {
+        return raw;
     }
 
     public String[] getParams() {
         return params;
+    }
+
+    public String toString() {
+        return getRaw();
     }
 }

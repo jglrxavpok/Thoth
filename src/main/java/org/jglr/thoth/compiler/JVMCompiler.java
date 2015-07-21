@@ -58,7 +58,7 @@ public class JVMCompiler implements Opcodes {
 
             mv.visitTypeInsn(NEW, VALUE_INTERNAL);
             mv.visitInsn(DUP);
-            loadEnum(mv, ThothValue.Types.class, ThothValue.Types.TEXT);
+            loadEnum(mv, ThothValue.Types.class, ThothValue.Types.TRANSLATION);
             mv.visitInsn(ACONST_NULL);
             mv.visitMethodInsn(INVOKESPECIAL, VALUE_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(ThothValue.Types.class), OBJECT_TYPE), false);
             mv.visitVarInsn(ASTORE, resultVar);
