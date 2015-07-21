@@ -1,9 +1,7 @@
 import thoth.Constants;
 import thoth.Thoth;
 import thoth.compiler.JVMCompiler;
-import thoth.lang.ThothClass;
-import thoth.lang.Translation;
-import thoth.lang.TranslationSet;
+import thoth.lang.*;
 import thoth.parser.ThothParserException;
 import org.junit.Test;
 
@@ -33,5 +31,9 @@ public class ThothCompilerTests implements Constants {
         TranslationSet set = setClass.newInstance();
         System.out.println(set.getTranslation("frenchHelloWorld"));
         System.out.println(set.getTranslation("test1", Translation.create("Test0", FLAG_NEUTRAL), Translation.create("Test2", FLAG_NEUTRAL)));
+        System.out.println(set.getTranslation("foo2", Translation.create("Test0")));
+        System.out.println(set.getTranslation("foo2", new NullValue()));
+        System.out.println(set.getTranslation("foo2", new ThothValue(ThothValue.Types.TEXT, null)));
+        System.out.println(set.getTranslation("foo2", new ThothValue(ThothValue.Types.BOOL, true)));
     }
 }

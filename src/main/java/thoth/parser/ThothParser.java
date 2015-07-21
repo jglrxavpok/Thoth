@@ -80,6 +80,9 @@ public class ThothParser implements Constants {
                 }
 
                 String name = rawLang.substring(i, nameEnd);
+                if(functions.containsKey(name)) {
+                    throwParserException("Two functions cannot have the same name! ("+name+")", i, 0, 0);
+                }
 
                 int end = seek(rawLang, equalSign, DEF_END); // Seeks the end of the translation
                 if(end < 0) {
