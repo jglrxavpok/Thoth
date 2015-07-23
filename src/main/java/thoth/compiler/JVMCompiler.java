@@ -97,6 +97,7 @@ public class JVMCompiler implements Opcodes {
             mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
             mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "length", Type.getMethodDescriptor(Type.INT_TYPE), false); // calls length
             mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "delete", Type.getMethodDescriptor(BUILDER_TYPE, Type.INT_TYPE, Type.INT_TYPE), false); // calls delete(0, length)
+            mv.visitInsn(POP);
 
             mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
             mv.visitInsn(DUP);
@@ -187,7 +188,6 @@ public class JVMCompiler implements Opcodes {
                     mv.visitLdcInsn(-val);
                     mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "hasCorrectFlags", Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.INT_TYPE), false);
                     mv.visitJumpInsn(IFEQ, destination);
-                    mv.visitInsn(POP);
                     mv.visitLabel(new Label());
                     jumpedTo.add(dest);
                 } else {
@@ -257,9 +257,14 @@ public class JVMCompiler implements Opcodes {
 
                     mv.visitVarInsn(ILOAD, tmpValue);
                     mv.visitJumpInsn(IFEQ, destination);
-                    mv.visitInsn(POP);
                     jumpedTo.add(dest);
                 }
+            } else if(insn instanceof GotoInsn) {
+                mv.visitLabel(new Label());
+                String dest = ((GotoInsn) insn).getDestination();
+                Label destination = labelMap.getOrDefault(dest, new Label());
+                labelMap.put(dest, destination);
+                mv.visitJumpInsn(GOTO, destination);
             }
         }
     }
@@ -273,6 +278,7 @@ public class JVMCompiler implements Opcodes {
         mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_INTERNAL, "getValue", Type.getMethodDescriptor(OBJECT_TYPE), false); // call 'getValue'
         mv.visitMethodInsn(INVOKEVIRTUAL, Type.getInternalName(Object.class), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false); // call 'toString'
         mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "append", Type.getMethodDescriptor(BUILDER_TYPE, Type.getType(String.class)), false); // call 'append(String)'
+        mv.visitInsn(POP);
     }
 
     private void addText(String text, MethodVisitor mv) {
@@ -282,6 +288,7 @@ public class JVMCompiler implements Opcodes {
         mv.visitFieldInsn(GETFIELD, className, builderName, BUILDER_TYPE.getDescriptor()); // get '_builder'
         mv.visitLdcInsn(text); // load text onto the stack
         mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "append", Type.getMethodDescriptor(BUILDER_TYPE, Type.getType(String.class)), false); // call 'append(String)'
+        mv.visitInsn(POP);
     }
 
     private <T extends Enum> void loadEnum(MethodVisitor mv, Class<T> enumClass, T val) {

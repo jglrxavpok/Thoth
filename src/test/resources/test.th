@@ -1,4 +1,5 @@
 class thothtest.TestClass
+
 def test0=Hello world![end]
 
 def test1(arg1, arg2)=Hello world! |arg1| |arg1| |arg2|[end]
@@ -10,3 +11,5 @@ def foo0(a,b,c):mp=|a->fp?{|If you see this, it means something has gone terribl
 def foo1(a,b,c):fp=|a->fp?{|If you see this, it means the condition worked!|}| I'm a text that doesn't need conditions![end]
 
 def foo2(a)=|a?{|Test|}|[end]
+
+def elseTest(a)=|a? { |Test c:| } ! { |Null :c| } |[end]

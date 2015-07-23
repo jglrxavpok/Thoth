@@ -45,9 +45,6 @@ public class ThothInterpreter {
         state.insnPointer = 0;
         StringBuilder builder = new StringBuilder();
         for(;state.insnPointer<insns.size();state.insnPointer++) {
-            if(state.insnPointer < 0) {
-                throw new RuntimeException("Tried to jump to wrong label: "+state.label);
-            }
             ThothInstruction insn = insns.get(state.insnPointer);
             String partialResult = insn.execute(actualParams, state, this);
             builder.append(partialResult);
@@ -78,6 +75,9 @@ public class ThothInterpreter {
      */
     public void jump(String destination) {
         state.insnPointer = state.getJumpLocation(destination);
+        if(state.insnPointer == -1) {
+            throw new RuntimeException("Tried to jump to wrong label: "+destination);
+        }
         state.label = destination;
     }
 }

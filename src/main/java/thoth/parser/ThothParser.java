@@ -24,6 +24,7 @@ public class ThothParser implements Constants {
      * The current level of indent in labels, i.e. N5, fifth label of level 0, N6-8, eighth label of level 1
      */
     private String nodeBase = "N";
+    private int maxNode;
 
     public ThothParser() {
         inGlobalScope = true;
@@ -141,6 +142,13 @@ public class ThothParser implements Constants {
                     instructionList.add(newLabelNode());
                     String scriptCode = currentText.toString();
                     createInstructions(instructionList, paramMap, scriptCode);
+                    newNode();
+                    instructionList.add(newLabelNode());
+                    int n = maxNode-nodeID;
+                    for(int i=0;i<n;i++) {
+                        newNode();
+                        instructionList.add(newLabelNode());
+                    }
                 } else {
                     instructionList.add(new TextInstruction(currentText.toString())); // We have raw text, directly output it
                 }
@@ -260,9 +268,30 @@ public class ThothParser implements Constants {
             } else if(c == '}') {
                 popNode();
                 newNode();
-                instructions.add(newLabelNode()); // Makes the current node level decrease
-            }
-            else {
+                String dest = newNode();
+                maxNode = nodeID;
+                rollbackNode();
+                rollbackNode();
+                instructions.add(new GotoInsn(dest));
+            } else if(c == '!') {
+                String s = buffer.toString();
+                if(gettingField) {
+                    instructions.add(new FlagInstruction(s));
+                } else {
+                    if(!s.isEmpty()) {
+                        if (!params.containsKey(s)) {
+                            throwParserException("Invalid variable name: " + s, i, column, line);
+                        } else {
+                            int index = params.get(s);
+                            instructions.add(new ParamInstruction(index));
+                        }
+                    }
+
+                    newNode();
+                    instructions.add(newLabelNode());
+
+                }
+            } else {
                 buffer.append(c);
             }
 

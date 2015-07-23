@@ -23,4 +23,13 @@ public class ThothHiLevelTests implements Constants {
         Assert.assertTrue("Function call on 'test0' did not return expected results, got \""+result+"\" instead",
                 result.equals("Hello world!"));
     }
+
+    @Test
+    public void simpleElse() throws IOException, ThothParserException {
+        ThothClass clazz = Thoth.singleton.compile(getClass().getResource("test.th"));
+        clazz.getFunctions().forEach(f -> System.out.println(f.getName()));
+        String result = Thoth.singleton.interpret(clazz, "elseTest");
+        Assert.assertTrue("Function call on 'elseTest' did not return expected results, got \""+result+"\" instead",
+                result.equals("Null :c"));
+    }
 }
