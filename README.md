@@ -78,7 +78,7 @@ def echo(arg)=You said |arg|!
 
 The 'echo' function will output "You said " and will concatenate the value of 'arg' to it.
 
-For instance, calling echo("Hello") returns "You said Hello!"
+For instance, calling ``echo("Hello")`` returns "You said Hello!"
 
 WIP README
 =========
