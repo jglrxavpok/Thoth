@@ -13,7 +13,10 @@ public class ThothClass {
         this.name = name.replace(".", "/");
         this.functions = functions;
         functionList = new ArrayList<>();
-        functions.values().forEach(functionList::add);
+        functions.values().forEach(f -> {
+            functionList.add(f);
+            f.setClass(this);
+        });
     }
 
     public ThothFunc getFunction(String name) {

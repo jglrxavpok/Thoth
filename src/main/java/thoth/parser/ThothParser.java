@@ -56,10 +56,18 @@ public class ThothParser implements Constants {
                 endOfLine--;
             className = rawLang.substring(classNameIndex+DEF_CLASS.length()+1, endOfLine);
         }
+
+        if(className == null) {
+            className = rawLang.substring(0, 5);
+        }
         for(int i = 0;i<rawLang.length() && i >= 0;) {
             if (inGlobalScope) {
                 String keyword = DEF_KEYWORD+" ";
+                int prevI = i;
                 i = seek(rawLang, i, keyword)+keyword.length(); // After searching for the first occurence of 'def ' we put the cursor behind it to start reading the function name
+                if(prevI > i) { // we reached eof
+                    break;
+                }
                 inGlobalScope = false;
             } else {
                 // def nameOfFunc(arg0, arg1...):type=value
@@ -82,7 +90,7 @@ public class ThothParser implements Constants {
 
                 String name = rawLang.substring(i, nameEnd);
                 if(functions.containsKey(name)) {
-                    throwParserException("Two functions cannot have the same name! ("+name+")", i, 0, 0);
+                    throwParserException("Two functions cannot have the same name! ("+name+") in class "+className, i, 0, 0);
                 }
 
                 int end = seek(rawLang, equalSign, DEF_END); // Seeks the end of the translation
@@ -99,9 +107,7 @@ public class ThothParser implements Constants {
                 inGlobalScope = true;
             }
         }
-        if(className == null) {
-            className = rawLang.substring(0, 5);
-        }
+
         return new ThothClass(className, functions);
     }
 
@@ -291,6 +297,10 @@ public class ThothParser implements Constants {
                     instructions.add(newLabelNode());
 
                 }
+            } else if(c == '(') { // beginning of function call
+                String name = buffer.toString();
+                buffer.delete(0, buffer.length());
+                i+= loadArgs(instructions, params, name, chars, i+1).nChars;
             } else {
                 buffer.append(c);
             }
@@ -315,6 +325,70 @@ public class ThothParser implements Constants {
                 }
             }
         }
+    }
+
+    private FunctionCallDef loadArgs(List<ThothInstruction> instructions, Map<String, Integer> params, String name, char[] chars, int index) {
+        StringBuilder buffer = new StringBuilder();
+        boolean inString = false;
+        int nArgs = 0;
+        for(int i = index;i<chars.length;i++) {
+            char c = chars[i];
+            if(c == ')' && !inString) {
+                if(buffer.length() > 0) {
+                    String var = buffer.toString();
+                    int varIndex = params.get(var);
+                    instructions.add(new LoadLocalInsn(varIndex));
+                    buffer.delete(0, buffer.length());
+                    nArgs++;
+                }
+                int fnameIndex = -1;
+                boolean direct = true;
+                if(name.startsWith("$")) {
+                    fnameIndex = params.get(name.substring(1));
+                    direct = false;
+                }
+                FunctionCallDef def = new FunctionCallDef(name, nArgs, i-index+1, direct, fnameIndex);
+                instructions.add(new FuncCallInsn(def));
+                return def;
+            } else if(c == ',' && !inString) {
+                if(buffer.length() > 0) {
+                    String var = buffer.toString();
+                    int varIndex = params.get(var);
+                    instructions.add(new LoadLocalInsn(varIndex));
+                    buffer.delete(0, buffer.length());
+                    nArgs++;
+                }
+            } else if(c == ' ' && inString) {
+                buffer.append(c);
+            } else if(c == '"') {
+                inString = !inString;
+                if(!inString) { // we're no longer in a String, load it on the stack
+                    instructions.add(new LoadConstantInsn(buffer.toString()));
+                    buffer.delete(0, buffer.length());
+                    nArgs++;
+                }
+            } else if(c == '(' && !inString) {
+                String fname = buffer.toString();
+                buffer.delete(0, buffer.length());
+                FunctionCallDef def = loadArgs(instructions, params, fname, chars, i);
+                i += def.nChars;
+                instructions.add(new FuncCallInsn(def));
+            } else {
+                buffer.append(c);
+            }
+        }
+        int fnameIndex = -1;
+        boolean direct = true;
+        if(name.startsWith("$")) {
+            fnameIndex = params.get(name.substring(1));
+            direct = false;
+        }
+        if(direct) {
+            instructions.add(new LoadLocalInsn(fnameIndex));
+        }
+        FunctionCallDef def = new FunctionCallDef(name, nArgs, chars.length-index, direct, fnameIndex);
+        instructions.add(new FuncCallInsn(def));
+        return def;
     }
 
     /**

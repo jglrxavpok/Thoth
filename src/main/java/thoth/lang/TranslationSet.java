@@ -25,7 +25,7 @@ public abstract class TranslationSet {
         try {
             MethodHandle handle = lookup.findVirtual(getClass(), name, type);
             handles.put(name, handle);
-            System.out.println("Successfully created handle for "+name+" "+handle);
+            System.out.println("Successfully created handle for "+name+" "+handle+ " in class "+getClass().getCanonicalName());
         } catch (NoSuchMethodException e) {
             System.err.println("Invalid translation id: " + name + " with " + argsNbr + " arguments. Check the name and the arguments count! "+e.getMessage());
         } catch (IllegalAccessException e) {

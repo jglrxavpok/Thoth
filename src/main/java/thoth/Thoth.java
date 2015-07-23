@@ -45,7 +45,7 @@ public class Thoth {
         if(func != null) {
             return interpret(func, parameters);
         }
-        return function;
+        return "Function not found: "+function;
     }
 
 }

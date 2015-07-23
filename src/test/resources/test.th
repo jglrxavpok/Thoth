@@ -1,8 +1,8 @@
 class thothtest.TestClass
 
-def test0=Hello world![end]
-
 def test1(arg1, arg2)=Hello world! |arg1| |arg1| |arg2|[end]
+
+def test0=Hello world![end]
 
 def frenchHelloWorld:ns=Bonjour tout le monde![end]
 
@@ -13,3 +13,9 @@ def foo1(a,b,c):fp=|a->fp?{|If you see this, it means the condition worked!|}| I
 def foo2(a)=|a?{|Test|}|[end]
 
 def elseTest(a)=|a? { |Test c:| } ! { |Null :c| } |[end]
+
+def subfuncTest(a)=|a?{|Not null|}!{|Null in sub|}|[end]
+
+def funcTest(a)=Result is |subfuncTest(a)|[end]
+
+def varfuncTest(a)=Result is |$a()|[end]

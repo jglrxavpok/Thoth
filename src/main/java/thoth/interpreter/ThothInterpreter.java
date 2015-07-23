@@ -1,6 +1,7 @@
 package thoth.interpreter;
 
 import thoth.lang.NullValue;
+import thoth.lang.ThothClass;
 import thoth.lang.ThothFunc;
 import thoth.lang.ThothValue;
 import thoth.insns.LabelInstruction;
@@ -11,6 +12,7 @@ import java.util.List;
 public class ThothInterpreter {
 
     private final InterpreterState state;
+    private ThothClass currentClass;
 
     public ThothInterpreter() {
         this.state = new InterpreterState();
@@ -26,6 +28,7 @@ public class ThothInterpreter {
      *      The result of the function call
      */
     public String interpret(ThothFunc function, ThothValue... params) {
+        this.currentClass = function.getThClass();
         ThothValue[] actualParams = new ThothValue[function.getArgsNumber()];
         int min = Math.min(actualParams.length,params.length);
         for(int i = 0;i<min;i++) { // Try to fill the actualParams array with the given parameters
@@ -60,7 +63,6 @@ public class ThothInterpreter {
     private void computeJumpsDestinations(List<ThothInstruction> insns) {
         for(int i = 0;i<insns.size();i++) {
             ThothInstruction insn = insns.get(i);
-            System.out.println(insn);
             if(insn.getType() == ThothInstruction.Type.LABEL) {
                 LabelInstruction labelInsn = (LabelInstruction)insn;
                 state.addJumpLocation(labelInsn.getLabel(), i);
@@ -79,5 +81,9 @@ public class ThothInterpreter {
             throw new RuntimeException("Tried to jump to wrong label: "+destination);
         }
         state.label = destination;
+    }
+
+    public ThothClass getCurrentClass() {
+        return currentClass;
     }
 }

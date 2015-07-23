@@ -267,6 +267,7 @@ public class JVMCompiler implements Opcodes {
                 mv.visitJumpInsn(GOTO, destination);
             }
         }
+
     }
 
     private void addText(int varIndex, MethodVisitor mv) {
