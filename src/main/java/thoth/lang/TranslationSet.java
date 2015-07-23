@@ -60,6 +60,13 @@ public abstract class TranslationSet {
                 for(ThothValue t : args) {
                     list.add(t);
                 }
+                while(list.size() < handle.type().parameterCount()) {
+                    list.add(new NullValue());
+                }
+
+                while(list.size() > handle.type().parameterCount()) {
+                    list.remove(list.size()-1);
+                }
                 return (Translation) handle.invokeWithArguments(list);
             }
         } catch (Throwable throwable) {

@@ -32,12 +32,12 @@ public class ThothCompilerTests implements Constants {
         System.out.println(set.getTranslation("frenchHelloWorld"));
         System.out.println(set.getTranslation("test1", Translation.create("Test0", FLAG_NEUTRAL), Translation.create("Test2", FLAG_NEUTRAL)));
         System.out.println(set.getTranslation("foo2", Translation.create("Test0")));
-        System.out.println(set.getTranslation("foo2", new NullValue()));
+        System.out.println(set.getTranslation("foo2"));
         System.out.println(set.getTranslation("foo2", new ThothValue(ThothValue.Types.TEXT, null)));
         System.out.println(set.getTranslation("foo2", new ThothValue(ThothValue.Types.BOOL, true)));
         System.out.println(set.getTranslation("elseTest", Translation.create("Test0")));
-        System.out.println(set.getTranslation("elseTest", new NullValue()));
-        System.out.println(set.getTranslation("funcTest", new NullValue()));
+        System.out.println(set.getTranslation("elseTest"));
+        System.out.println(set.getTranslation("funcTest"));
         System.out.println(set.getTranslation("varfuncTest", Translation.create("frenchHelloWorld")));
     }
 }
