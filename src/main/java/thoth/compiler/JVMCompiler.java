@@ -6,6 +6,7 @@ import thoth.Utils;
 import thoth.lang.*;
 import thoth.insns.*;
 import org.objectweb.asm.*;
+import thoth.parser.FunctionCallDef;
 import thoth.parser.ThothParser;
 import thoth.parser.ThothParserException;
 
@@ -27,6 +28,7 @@ public class JVMCompiler implements Opcodes {
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final Type BUILDER_TYPE = Type.getType(StringBuilder.class);
     private final Stack<Integer> stack;
+    private final Stack<Integer> tmpStack;
     private final List<String> jumpedTo;
     private final ThothParser parser;
     private String className;
@@ -38,6 +40,7 @@ public class JVMCompiler implements Opcodes {
 
     public JVMCompiler() {
         stack = new Stack<>();
+        tmpStack = new Stack<>();
         jumpedTo = new ArrayList<>();
         parser = new ThothParser();
     }
@@ -89,15 +92,7 @@ public class JVMCompiler implements Opcodes {
 
             mv.visitLabel(new Label());
 
-            // Empty '_builder' buffer
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
-            mv.visitInsn(ICONST_0); // loads 0
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
-            mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "length", Type.getMethodDescriptor(Type.INT_TYPE), false); // calls length
-            mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "delete", Type.getMethodDescriptor(BUILDER_TYPE, Type.INT_TYPE, Type.INT_TYPE), false); // calls delete(0, length)
-            mv.visitInsn(POP);
+            emptyBuffer(mv);
 
             mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
             mv.visitInsn(DUP);
@@ -265,9 +260,93 @@ public class JVMCompiler implements Opcodes {
                 Label destination = labelMap.getOrDefault(dest, new Label());
                 labelMap.put(dest, destination);
                 mv.visitJumpInsn(GOTO, destination);
+            } else if(insn instanceof LoadThisInsn) {
+                int tmpVal = localsCount++;
+                tmpStack.push(tmpVal);
+                mv.visitLocalVariable("tmpVal"+tmpVal, Type.getDescriptor(String.class), null, new Label(), new Label(), tmpVal);
+                mv.visitLabel(new Label());
+                mv.visitVarInsn(ALOAD, 0);
+                mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
+                mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false);
+                mv.visitVarInsn(ASTORE, tmpVal);
+                mv.visitTypeInsn(NEW, VALUE_INTERNAL);
+                mv.visitInsn(DUP);
+                loadEnum(mv, ThothValue.Types.class, ThothValue.Types.TRANSLATION);
+                mv.visitVarInsn(ALOAD, 0);
+            } else if(insn instanceof LoadLocalInsn) {
+                int var = ((LoadLocalInsn) insn).getVarIndex();
+                mv.visitVarInsn(ALOAD, var + 1);
+            } else if(insn instanceof LoadConstantInsn) {
+                String var = ((LoadConstantInsn) insn).getConstant();
+                mv.visitTypeInsn(NEW, VALUE_INTERNAL);
+                mv.visitInsn(DUP);
+                loadEnum(mv, ThothValue.Types.class, ThothValue.Types.TEXT);
+                mv.visitLdcInsn(var);
+                mv.visitMethodInsn(INVOKESPECIAL, VALUE_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(ThothValue.Types.class), OBJECT_TYPE), false);
+            } else if(insn instanceof FuncCallInsn) {
+                FunctionCallDef def = ((FuncCallInsn) insn).getFunc();
+                if(def.isDirect()) {
+                    Type type = Type.getMethodType(TRANSLATION_TYPE, createArgsParam(def.nArgs));
+                    mv.visitMethodInsn(INVOKEVIRTUAL, interClassName, def.name, type.getDescriptor(), false);
+                } else {
+                    // fetch tr_name
+                    // create array
+                    int arrayLocal = localsCount++;
+                    mv.visitLocalVariable("arrayLocal" + arrayLocal, Type.getDescriptor(ThothValue[].class), null, new Label(), new Label(), arrayLocal);
+                    mv.visitLdcInsn(def.nArgs);
+                    mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(ThothValue.class));
+                    for(int i = 0;i<def.nArgs;i++) {
+                        int arrayLocal1 = localsCount++;
+                        mv.visitLocalVariable("arrayElemLocal" + arrayLocal, Type.getDescriptor(ThothValue.class), null, new Label(), new Label(), arrayLocal1);
+                        mv.visitVarInsn(ASTORE, arrayLocal1);
+                        mv.visitInsn(DUP);
+                        mv.visitLdcInsn(i);
+                        mv.visitVarInsn(ALOAD, arrayLocal1);
+                        mv.visitInsn(AASTORE);
+                    }
+                    mv.visitVarInsn(ASTORE, arrayLocal);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_INTERNAL, "getValue", Type.getMethodDescriptor(OBJECT_TYPE), false);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, OBJECT_TYPE.getInternalName(), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false);
+                    mv.visitVarInsn(ALOAD, arrayLocal);
+
+                    Type type = Type.getMethodType(TRANSLATION_TYPE, Type.getType(String.class), Type.getType(ThothValue[].class));
+                    mv.visitMethodInsn(INVOKEVIRTUAL, SET_INTERNAL, "getTranslation", type.getDescriptor(), false);
+                }
+                mv.visitMethodInsn(INVOKESPECIAL, VALUE_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(ThothValue.Types.class), OBJECT_TYPE), false);
+            } else if(insn instanceof PopAfterFuncInsn) {
+                emptyBuffer(mv);
+                int local = localsCount++;
+                mv.visitVarInsn(ASTORE, local);
+                int tmpVal = tmpStack.pop();
+                addRawText(tmpVal, mv);
+                mv.visitLocalVariable("localFuncRes" + local, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), local);
+                addText(local-1, mv);
             }
         }
 
+    }
+
+    private void emptyBuffer(MethodVisitor mv) {
+        // Empty '_builder' buffer
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
+        mv.visitInsn(ICONST_0); // loads 0
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
+        mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "length", Type.getMethodDescriptor(Type.INT_TYPE), false); // calls length
+        mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "delete", Type.getMethodDescriptor(BUILDER_TYPE, Type.INT_TYPE, Type.INT_TYPE), false); // calls delete(0, length)
+        mv.visitInsn(POP);
+
+    }
+
+    private void addRawText(int varIndex, MethodVisitor mv) {
+        // this._builder.append(text);
+        mv.visitLabel(new Label()); // new label
+        mv.visitVarInsn(ALOAD, 0); // get 'this'
+        mv.visitFieldInsn(GETFIELD, className, builderName, BUILDER_TYPE.getDescriptor()); // get '_builder'
+        mv.visitVarInsn(ALOAD, varIndex); // add 1 as it starts with 'this' at 0
+        mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "append", Type.getMethodDescriptor(BUILDER_TYPE, Type.getType(String.class)), false); // call 'append(String)'
+        mv.visitInsn(POP);
     }
 
     private void addText(int varIndex, MethodVisitor mv) {
@@ -318,7 +397,11 @@ public class JVMCompiler implements Opcodes {
     }
 
     private Type[] createArgsParam(ThothFunc func) {
-        Type[] types = new Type[func.getArgsNumber()];
+        return createArgsParam(func.getArgsNumber());
+    }
+
+    private Type[] createArgsParam(int nArgs) {
+        Type[] types = new Type[nArgs];
         for(int i = 0;i<types.length;i++) {
             types[i] = VALUE_TYPE;
         }

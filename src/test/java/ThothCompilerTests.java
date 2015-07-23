@@ -37,5 +37,7 @@ public class ThothCompilerTests implements Constants {
         System.out.println(set.getTranslation("foo2", new ThothValue(ThothValue.Types.BOOL, true)));
         System.out.println(set.getTranslation("elseTest", Translation.create("Test0")));
         System.out.println(set.getTranslation("elseTest", new NullValue()));
+        System.out.println(set.getTranslation("funcTest", new NullValue()));
+        System.out.println(set.getTranslation("varfuncTest", Translation.create("frenchHelloWorld")));
     }
 }

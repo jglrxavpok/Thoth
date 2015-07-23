@@ -18,4 +18,6 @@ def subfuncTest(a)=|a?{|Not null|}!{|Null in sub|}|[end]
 
 def funcTest(a)=Result is |subfuncTest(a)|[end]
 
+def funcTest2(a)=Result is |subfuncTest("Constant")|[end]
+
 def varfuncTest(a)=Result is |$a()|[end]

@@ -300,7 +300,9 @@ public class ThothParser implements Constants {
             } else if(c == '(') { // beginning of function call
                 String name = buffer.toString();
                 buffer.delete(0, buffer.length());
-                i+= loadArgs(instructions, params, name, chars, i+1).nChars;
+                instructions.add(new LoadThisInsn());
+                i += loadArgs(instructions, params, name, chars, i+1).nChars;
+                instructions.add(new PopAfterFuncInsn());
             } else {
                 buffer.append(c);
             }
@@ -331,6 +333,15 @@ public class ThothParser implements Constants {
         StringBuilder buffer = new StringBuilder();
         boolean inString = false;
         int nArgs = 0;
+        int fnameIndex = -1;
+        boolean direct = true;
+        if(name.startsWith("$")) {
+            fnameIndex = params.get(name.substring(1));
+            direct = false;
+        }
+        if(!direct) {
+            instructions.add(new LoadLocalInsn(fnameIndex));
+        }
         for(int i = index;i<chars.length;i++) {
             char c = chars[i];
             if(c == ')' && !inString) {
@@ -340,12 +351,6 @@ public class ThothParser implements Constants {
                     instructions.add(new LoadLocalInsn(varIndex));
                     buffer.delete(0, buffer.length());
                     nArgs++;
-                }
-                int fnameIndex = -1;
-                boolean direct = true;
-                if(name.startsWith("$")) {
-                    fnameIndex = params.get(name.substring(1));
-                    direct = false;
                 }
                 FunctionCallDef def = new FunctionCallDef(name, nArgs, i-index+1, direct, fnameIndex);
                 instructions.add(new FuncCallInsn(def));
@@ -376,15 +381,6 @@ public class ThothParser implements Constants {
             } else {
                 buffer.append(c);
             }
-        }
-        int fnameIndex = -1;
-        boolean direct = true;
-        if(name.startsWith("$")) {
-            fnameIndex = params.get(name.substring(1));
-            direct = false;
-        }
-        if(direct) {
-            instructions.add(new LoadLocalInsn(fnameIndex));
         }
         FunctionCallDef def = new FunctionCallDef(name, nArgs, chars.length-index, direct, fnameIndex);
         instructions.add(new FuncCallInsn(def));

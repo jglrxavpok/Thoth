@@ -12,6 +12,10 @@ public class LoadLocalInsn extends ThothInstruction {
         this.varIndex = varIndex;
     }
 
+    public int getVarIndex() {
+        return varIndex;
+    }
+
     @Override
     public String execute(ThothValue[] params, InterpreterState state, ThothInterpreter interpreter) {
         state.push(params[varIndex]);
