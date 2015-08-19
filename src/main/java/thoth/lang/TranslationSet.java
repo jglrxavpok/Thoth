@@ -42,10 +42,14 @@ public abstract class TranslationSet {
         for(int i = 0;i<args.length;i++) {
             newArgs[i] = new ThothValue(ThothValue.Types.TRANSLATION, args[i]);
         }
-        return getTranslation(id, newArgs);
+        return getTranslationWithArray(id, newArgs);
     }
 
     public Translation getTranslation(String id, ThothValue... args) {
+        return getTranslationWithArray(id, args);
+    }
+
+    public Translation getTranslationWithArray(String id, ThothValue[] args) {
         MethodHandle handle = handles.get(id);
         if(handle == null) {
             return new Translation(0, id, new String[0]);

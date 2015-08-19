@@ -30,6 +30,10 @@ public class ThothParser implements Constants {
         inGlobalScope = true;
     }
 
+    public ThothClass parseRaw(String rawLang) throws ThothParserException {
+        return parseRaw(rawLang, null);
+    }
+
     /**
      * Parses a String written in the Thoth syntax
      * @param rawLang
@@ -39,7 +43,7 @@ public class ThothParser implements Constants {
      * @throws ThothParserException
      *          If any error happens during the parsing process (i.e. wrong syntax)
      */
-    public ThothClass parseRaw(String rawLang) throws ThothParserException {
+    public ThothClass parseRaw(String rawLang, String file) throws ThothParserException {
         inGlobalScope = true;
         Map<String, ThothFunc> functions = new HashMap<>();
         String className = null;
@@ -52,8 +56,8 @@ public class ThothParser implements Constants {
             int endOfLine = rawLang.indexOf("\n", classNameIndex);
             if(endOfLine < 0)
                 endOfLine = rawLang.length();
-            else
-                endOfLine--;
+            /*else
+                endOfLine--;*/
             className = rawLang.substring(classNameIndex+DEF_CLASS.length()+1, endOfLine);
         }
 
@@ -108,7 +112,7 @@ public class ThothParser implements Constants {
             }
         }
 
-        return new ThothClass(className, functions);
+        return new ThothClass(className, file, functions);
     }
 
     /**

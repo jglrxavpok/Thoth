@@ -7,9 +7,10 @@ import java.util.Map;
 public class ThothClass {
     private final Map<String, ThothFunc> functions;
     private final List<ThothFunc> functionList;
+    private final String sourceFile;
     private String name;
 
-    public ThothClass(String name, Map<String, ThothFunc> functions) {
+    public ThothClass(String name, String sourceFile, Map<String, ThothFunc> functions) {
         this.name = name.replace(".", "/");
         this.functions = functions;
         functionList = new ArrayList<>();
@@ -17,6 +18,11 @@ public class ThothClass {
             functionList.add(f);
             f.setClass(this);
         });
+        this.sourceFile = sourceFile;
+    }
+
+    public String getSourceFile() {
+        return sourceFile;
     }
 
     public ThothFunc getFunction(String name) {

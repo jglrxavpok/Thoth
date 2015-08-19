@@ -1,7 +1,6 @@
 package thoth.compiler;
 
 import org.objectweb.asm.util.CheckClassAdapter;
-import thoth.Constants;
 import thoth.Utils;
 import thoth.lang.*;
 import thoth.insns.*;
@@ -14,7 +13,6 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.sql.Types;
 import java.util.*;
 
 public class JVMCompiler implements Opcodes {
@@ -27,6 +25,7 @@ public class JVMCompiler implements Opcodes {
     private static final String TRANSLATION_INTERNAL = Type.getInternalName(Translation.class);
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final Type BUILDER_TYPE = Type.getType(StringBuilder.class);
+    private static final Type CACHE_TYPE = Type.getType(HashMap.class);
     private final Stack<Integer> stack;
     private final Stack<Integer> tmpStack;
     private final List<String> jumpedTo;
@@ -37,6 +36,7 @@ public class JVMCompiler implements Opcodes {
 
     public static String resultName = "result";
     public static String builderName = "resultBuilder";
+    public static String cacheName = "cache";
 
     public JVMCompiler() {
         stack = new Stack<>();
@@ -55,8 +55,9 @@ public class JVMCompiler implements Opcodes {
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         System.out.println("Compiling " + clazz.getName());
         writer.visit(V1_8, ACC_PUBLIC, className, null, SET_INTERNAL, new String[0]);
-        writer.visitSource(clazz.getName() + ".class", null);
+        writer.visitSource(clazz.getSourceFile(), null);
         writer.visitField(ACC_PRIVATE, builderName, BUILDER_TYPE.getDescriptor(), null, null);
+        writer.visitField(ACC_PRIVATE, cacheName, CACHE_TYPE.getDescriptor(), null, null);
         buildConstructor(clazz, writer);
 
         // Register handles
@@ -79,62 +80,10 @@ public class JVMCompiler implements Opcodes {
 
         for(ThothFunc func : clazz.getFunctions()) {
             stack.clear();
-            int paramIndex = 1;
-            paramIndex += func.getArgsNumber();
-            int resultVar = paramIndex++;
-            localsCount = paramIndex;
-
             MethodVisitor mv = writer.visitMethod(ACC_PUBLIC, func.getName(),
                     Type.getMethodDescriptor(TRANSLATION_TYPE, createArgsParam(func)), null, new String[0]);
             mv.visitCode();
-            Label startLabel = new Label();
-            mv.visitLabel(startLabel);
-
-            mv.visitLabel(new Label());
-
-            emptyBuffer(mv);
-
-            mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
-            mv.visitInsn(DUP);
-            mv.visitLdcInsn(func.getTranslation().getFlags());
-            mv.visitInsn(ACONST_NULL);
-            mv.visitLdcInsn(func.getArgsNumber());
-            mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(String.class));
-            for(int i = 0;i<func.getArgsNumber();i++) {
-                mv.visitInsn(DUP);
-                mv.visitLdcInsn(i);
-                mv.visitLdcInsn(func.getArgumentNames().get(i));
-                mv.visitInsn(AASTORE);
-            }
-            mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.getType(String.class), Type.getType(String[].class)), false);
-            mv.visitVarInsn(ASTORE, resultVar);
-            mv.visitLabel(new Label());
-
-            // Actual thoth code
             compileFunction(func, mv);
-
-            mv.visitLabel(new Label());
-            // dump buffer content into __result__
-            mv.visitVarInsn(ALOAD, resultVar); // get __result__
-
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
-            mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false);
-            mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "setRaw", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class)), false);
-
-            mv.visitLabel(new Label());
-            mv.visitVarInsn(ALOAD, resultVar);
-            mv.visitInsn(ARETURN);
-            Label endLabel = new Label();
-            mv.visitLabel(endLabel);
-
-            paramIndex = 1;
-            for(String param : func.getArgumentNames()) {
-                mv.visitLocalVariable(param, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), paramIndex++);
-            }
-            mv.visitLocalVariable(resultName, TRANSLATION_TYPE.getDescriptor(), null, startLabel, endLabel, resultVar);
-
-
             mv.visitMaxs(0, 0);
             mv.visitEnd();
         }
@@ -149,6 +98,80 @@ public class JVMCompiler implements Opcodes {
     }
 
     private void compileFunction(ThothFunc func, MethodVisitor mv) {
+        if(func.getArgsNumber() == 0) {
+            compileCachedFunction(func, mv);
+        } else {
+            compileFunctionFully(func, mv);
+        }
+    }
+
+    private void compileCachedFunction(ThothFunc func, MethodVisitor mv) {
+        mv.visitLabel(new Label());
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, interClassName, cacheName, CACHE_TYPE.getDescriptor());
+        mv.visitLdcInsn(func.getName());
+        mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "get", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE), false);
+        mv.visitTypeInsn(CHECKCAST, TRANSLATION_INTERNAL);
+        mv.visitInsn(ARETURN);
+        mv.visitLabel(new Label());
+    }
+
+    private void compileFunctionFully(ThothFunc func, MethodVisitor mv) {
+        int paramIndex = 1;
+        paramIndex += func.getArgsNumber();
+        int resultVar = paramIndex++;
+        localsCount = paramIndex;
+
+        Label startLabel = new Label();
+        mv.visitLabel(startLabel);
+
+        mv.visitLabel(new Label());
+
+        emptyBuffer(mv);
+
+        mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(func.getTranslation().getFlags());
+        mv.visitInsn(ACONST_NULL);
+        mv.visitLdcInsn(func.getArgsNumber());
+        mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(String.class));
+        for(int i = 0;i<func.getArgsNumber();i++) {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            mv.visitLdcInsn(func.getArgumentNames().get(i));
+            mv.visitInsn(AASTORE);
+        }
+        mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.getType(String.class), Type.getType(String[].class)), false);
+        mv.visitVarInsn(ASTORE, resultVar);
+        mv.visitLabel(new Label());
+
+        // Actual thoth code
+        compileFunctionBody(func, mv);
+
+        mv.visitLabel(new Label());
+        // dump buffer content into __result__
+        mv.visitVarInsn(ALOAD, resultVar); // get __result__
+
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, interClassName, builderName, BUILDER_TYPE.getDescriptor());
+        mv.visitMethodInsn(INVOKEVIRTUAL, BUILDER_TYPE.getInternalName(), "toString", Type.getMethodDescriptor(Type.getType(String.class)), false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, TRANSLATION_INTERNAL, "setRaw", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class)), false);
+
+        mv.visitLabel(new Label());
+        mv.visitVarInsn(ALOAD, resultVar);
+        mv.visitInsn(ARETURN);
+        Label endLabel = new Label();
+        mv.visitLabel(endLabel);
+
+        paramIndex = 1;
+        for(String param : func.getArgumentNames()) {
+            mv.visitLocalVariable(param, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), paramIndex++);
+        }
+        mv.visitLocalVariable(resultName, TRANSLATION_TYPE.getDescriptor(), null, startLabel, endLabel, resultVar);
+
+    }
+
+    private void compileFunctionBody(ThothFunc func, MethodVisitor mv) {
         Map<String, Label> labelMap = new HashMap<>();
         for(ThothInstruction insn : func.getInstructions()) {
             if(insn instanceof LabelInstruction) {
@@ -390,6 +413,39 @@ public class JVMCompiler implements Opcodes {
         mv.visitMethodInsn(INVOKESPECIAL, BUILDER_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
         mv.visitFieldInsn(PUTFIELD, className, builderName, BUILDER_TYPE.getDescriptor());
         mv.visitLabel(new Label());
+
+        // Cache functions with 0 argument
+        // Create a HashMap<String, Translation> instance and add wanted functions
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitTypeInsn(NEW, CACHE_TYPE.getInternalName());
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, CACHE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
+        mv.visitFieldInsn(PUTFIELD, className, cacheName, CACHE_TYPE.getDescriptor());
+        clazz.getFunctions().forEach(f -> {
+            if (f.getArgsNumber() == 0) {
+                // Get the cache instance
+                mv.visitVarInsn(ALOAD, 0);
+                mv.visitFieldInsn(GETFIELD, className, cacheName, CACHE_TYPE.getDescriptor());
+
+                // Loads function name
+                mv.visitLdcInsn(f.getName());
+
+                // Creates translation instance
+                mv.visitTypeInsn(NEW, TRANSLATION_INTERNAL);
+                mv.visitInsn(DUP);
+                mv.visitLdcInsn(f.getTranslation().getFlags());
+                mv.visitLdcInsn(f.getTranslation().getRaw());
+                mv.visitInsn(ICONST_0);
+                mv.visitTypeInsn(ANEWARRAY, Type.getInternalName(String.class));
+                mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_INTERNAL, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.getType(String.class), Type.getType(String[].class)), false);
+
+                // Cache the translation
+                mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "put", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE, OBJECT_TYPE), false);
+                mv.visitInsn(POP);
+            }
+        });
+        mv.visitLabel(new Label());
+
         mv.visitInsn(RETURN);
 
         mv.visitMaxs(0, 0);
@@ -414,24 +470,26 @@ public class JVMCompiler implements Opcodes {
 
     public byte[] compile(URL fileLocation, boolean debug) throws IOException, ThothParserException {
         InputStream input = fileLocation.openStream();
-        return compile(input, debug);
+        String path = fileLocation.getPath();
+        String file = path.substring(path.lastIndexOf('/') + 1);
+        return compile(input, file, debug);
     }
 
-    public byte[] compile(InputStream fileLocation) throws IOException, ThothParserException {
-        return compile(fileLocation, false);
+    public byte[] compile(InputStream fileLocation, String file) throws IOException, ThothParserException {
+        return compile(fileLocation, file, false);
     }
 
-    public byte[] compile(InputStream fileLocation, boolean debug) throws IOException, ThothParserException {
+    public byte[] compile(InputStream fileLocation, String file, boolean debug) throws IOException, ThothParserException {
         String code = Utils.readString(fileLocation, "UTF-8");
-        return compile(code, debug);
+        return compile(code, file, debug);
     }
 
-    public byte[] compile(String rawCode) throws ThothParserException {
-        return compile(rawCode, false);
+    public byte[] compile(String rawCode, String file) throws ThothParserException {
+        return compile(rawCode, file, false);
     }
 
-    public byte[] compile(String rawCode, boolean debug) throws ThothParserException {
-        return compileClass(parser.parseRaw(rawCode), debug);
+    public byte[] compile(String rawCode, String file, boolean debug) throws ThothParserException {
+        return compileClass(parser.parseRaw(rawCode, file), debug);
     }
 
     public Class<? extends TranslationSet> defineClass(String name, byte[] classData) throws InvocationTargetException, IllegalAccessException {

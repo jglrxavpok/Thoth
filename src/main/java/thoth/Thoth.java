@@ -24,16 +24,18 @@ public class Thoth {
 
     public ThothClass compile(URL fileLocation) throws IOException, ThothParserException {
         InputStream input = fileLocation.openStream();
-        return compile(input);
+        String path = fileLocation.getPath();
+        String file = path.substring(path.lastIndexOf('/')+1);
+        return compile(input, file);
     }
 
-    public ThothClass compile(InputStream fileLocation) throws IOException, ThothParserException {
+    public ThothClass compile(InputStream fileLocation, String file) throws IOException, ThothParserException {
         String code = Utils.readString(fileLocation, "UTF-8");
-        return compile(code);
+        return compile(code, file);
     }
 
-    public ThothClass compile(String rawCode) throws ThothParserException {
-        return parser.parseRaw(rawCode);
+    public ThothClass compile(String rawCode, String file) throws ThothParserException {
+        return parser.parseRaw(rawCode, file);
     }
 
     public String interpret(ThothFunc func, ThothValue... parameters) {
