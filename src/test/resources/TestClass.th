@@ -1,0 +1,5 @@
+class TestClass
+
+import TestClass2
+
+def test0:TypeOfClass2 = "Test"
