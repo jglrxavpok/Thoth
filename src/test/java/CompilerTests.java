@@ -43,7 +43,11 @@ public class CompilerTests {
         }
 
         byte[] bytecode = compiler.compile(resolvedClass);
-        FileOutputStream out = new FileOutputStream(new File(".", "ClassA.class"));
+        File destinationFile = new File(".", "testcompilation/"+resolvedClass.getName().replace('.', '/')+".class");
+        if(!destinationFile.getParentFile().exists()) {
+            destinationFile.getParentFile().mkdirs();
+        }
+        FileOutputStream out = new FileOutputStream(destinationFile);
         out.write(bytecode);
         out.flush();
         out.close();

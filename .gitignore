@@ -106,3 +106,7 @@ crashlytics-build.properties
 
 ## Gradle files
 build/
+
+## Thoth tests
+testcompilation/
+testscompiled/
