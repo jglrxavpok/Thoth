@@ -20,7 +20,7 @@ public class CompilerTests {
     public void simpleCompile() throws IOException {
         String thothCode = "class ClassA\n" +
                 "import thoth.lang.ThothTypes\n" +
-                "def test(a, b):Neutral = toUpperCase(\"MyCode\") a\n";
+                "def test(a, b):Neutral = toUpperCase(\"MyCode\") a true False TRUE FALSE\n";
         ThothParser parser = new ThothParser(thothCode, "ClassA.th");
         parser.parse();
         printAllWarningsAndErrors(parser);

@@ -40,7 +40,7 @@ public abstract class TranslationSet {
     public Translation getTranslation(String id, Translation... args) {
         ThothValue[] newArgs = new ThothValue[args.length];
         for(int i = 0;i<args.length;i++) {
-            newArgs[i] = new ThothValue(ThothValue.Types.TRANSLATION, args[i]);
+            newArgs[i] = new TranslationValue(args[i]);
         }
         return getTranslationWithArray(id, newArgs);
     }

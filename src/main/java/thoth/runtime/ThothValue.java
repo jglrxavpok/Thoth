@@ -1,28 +1,20 @@
 package thoth.runtime;
 
-public class ThothValue {
+public abstract class ThothValue<T> {
 
-    public enum Types {
-        BOOL, TEXT, TRANSLATION, NULL
-    }
+    private T value;
 
-    private Object value;
-    private final Types type;
-
-    public ThothValue(Types type, Object value) {
-        this.type = type;
+    public ThothValue(T value) {
         this.value = value;
     }
 
-    public void setValue(Object value) {
+    public void setValue(T value) {
         this.value = value;
     }
 
-    public Object getValue() {
+    public T getValue() {
         return value;
     }
 
-    public Types getType() {
-        return type;
-    }
+    public abstract String convertToString();
 }

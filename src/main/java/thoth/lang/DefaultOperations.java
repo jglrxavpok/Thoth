@@ -10,82 +10,22 @@ import thoth.runtime.Translation;
 public final class DefaultOperations {
 
     public static ThothValue capitalize(ThothValue arg) {
-        switch(arg.getType()) {
-            case TEXT: {
-                String value = (String) arg.getValue();
-                String text = Character.toUpperCase(value.charAt(0)) + value.substring(1);
-                return new TextValue(text);
-            }
-
-            case TRANSLATION: {
-                Translation translation = (Translation) arg.getValue();
-                String value = translation.getRaw();
-                String text = Character.toUpperCase(value.charAt(0)) + value.substring(1);
-                return new ThothValue(ThothValue.Types.TRANSLATION, text);
-            }
-
-            default:
-                return arg;
-        }
+        String value = arg.convertToString();
+        String text = Character.toUpperCase(value.charAt(0)) + value.substring(1);
+        return new TextValue(text);
     }
 
     public static ThothValue uncapitalize(ThothValue arg) {
-        switch(arg.getType()) {
-            case TEXT: {
-                String value = (String) arg.getValue();
-                String text = Character.toLowerCase(value.charAt(0)) + value.substring(1);
-                return new TextValue(text);
-            }
-
-            case TRANSLATION: {
-                Translation translation = (Translation) arg.getValue();
-                String value = translation.getRaw();
-                String text = Character.toLowerCase(value.charAt(0)) + value.substring(1);
-                return new ThothValue(ThothValue.Types.TRANSLATION, text);
-            }
-
-            default:
-                return arg;
-        }
+        String value = arg.convertToString();
+        String text = Character.toLowerCase(value.charAt(0)) + value.substring(1);
+        return new TextValue(text);
     }
 
     public static ThothValue toUppercase(ThothValue arg) {
-        switch(arg.getType()) {
-            case TEXT: {
-                String value = (String) arg.getValue();
-                String text = value.toUpperCase();
-                return new TextValue(text);
-            }
-
-            case TRANSLATION: {
-                Translation translation = (Translation) arg.getValue();
-                String value = translation.getRaw();
-                String text = value.toUpperCase();
-                return new ThothValue(ThothValue.Types.TRANSLATION, text);
-            }
-
-            default:
-                return arg;
-        }
+        return new TextValue(arg.convertToString().toUpperCase());
     }
 
     public static ThothValue toLowerCase(ThothValue arg) {
-        switch(arg.getType()) {
-            case TEXT: {
-                String value = (String) arg.getValue();
-                String text = value.toLowerCase();
-                return new TextValue(text);
-            }
-
-            case TRANSLATION: {
-                Translation translation = (Translation) arg.getValue();
-                String value = translation.getRaw();
-                String text = value.toLowerCase();
-                return new ThothValue(ThothValue.Types.TRANSLATION, text);
-            }
-
-            default:
-                return arg;
-        }
+        return new TextValue(arg.convertToString().toLowerCase());
     }
 }

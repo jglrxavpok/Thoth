@@ -1,7 +1,12 @@
 package thoth.runtime;
 
-public class TextValue extends ThothValue {
+public class TextValue extends ThothValue<String> {
     public TextValue(String value) {
-        super(Types.TEXT, value);
+        super(value);
+    }
+
+    @Override
+    public String convertToString() {
+        return getValue();
     }
 }
