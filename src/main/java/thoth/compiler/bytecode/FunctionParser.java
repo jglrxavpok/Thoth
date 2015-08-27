@@ -43,6 +43,11 @@ public class FunctionParser {
                 String arg = buffer.toString();
                 handleArgsAndConstants(arg, function, instructions);
                 empty(buffer);
+            } else if(read == '_' && !inString) {
+                String arg = buffer.toString();
+                handleArgsAndConstants(arg, function, instructions);
+                empty(buffer);
+                instructions.add(new LoadSpaceInstruction());
             } else {
                 buffer.append(read);
             }

@@ -21,7 +21,7 @@ public final class DefaultOperations {
         return new TextValue(text);
     }
 
-    public static ThothValue toUppercase(ThothValue arg) {
+    public static ThothValue toUpperCase(ThothValue arg) {
         return new TextValue(arg.convertToString().toUpperCase());
     }
 
