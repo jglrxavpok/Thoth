@@ -2,6 +2,7 @@ package thoth.compiler.bytecode;
 
 import org.objectweb.asm.*;
 import org.objectweb.asm.util.CheckClassAdapter;
+import thoth.compiler.ThothCompileError;
 import thoth.compiler.ThothCompilePhase;
 import thoth.compiler.bytecode.instructions.*;
 import thoth.compiler.resolver.ResolvedClass;
@@ -10,6 +11,7 @@ import thoth.runtime.TextValue;
 import thoth.runtime.ThothValue;
 import thoth.runtime.Translation;
 import thoth.runtime.TranslationSet;
+import thoth.utils.InstructionHandler;
 
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -30,9 +32,18 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
     private static final Type TRANSLATION_TYPE = Type.getType(Translation.class);
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private final FunctionParser functionParser;
+    private final HashMap<Class<? extends ThothInstruction>, InstructionHandler> insnHandlers;
 
     public ThothCompiler() {
         functionParser = new FunctionParser();
+        insnHandlers = new HashMap<>();
+
+        // Init handlers
+        insnHandlers.put(FunctionCallInstruction.class, this::handleFuncCall);
+        insnHandlers.put(LoadArgumentInstruction.class, this::handleLdVar);
+        insnHandlers.put(LoadBooleanInstruction.class, this::handleLdBool);
+        insnHandlers.put(LoadTextInstruction.class, this::handleLdText);
+        insnHandlers.put(NativeCallInstruction.class, this::handleNativeCall);
     }
 
     public byte[] compile(ResolvedClass clazz) {
@@ -47,7 +58,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
 
         if(clazz.isTranslationSet()) {
             classWriter.visitField(ACC_PRIVATE, "_builder", BUILDER_TYPE.getDescriptor(), null, null);
-            classWriter.visitField(ACC_PRIVATE, "_cache", CACHE_TYPE.getDescriptor(), null, null);
+            classWriter.visitField(ACC_PRIVATE, "_cache", CACHE_TYPE.getDescriptor(), "Ljava/util/HashMap<Ljava/lang/String;Lthoth/runtime/Translation;>;", null);
         }
 
         buildConstructor(classWriter, classType, clazz);
@@ -85,44 +96,81 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         return Type.getMethodDescriptor(VALUE_TYPE, arguments);
     }
 
-    private void compileFunction(ResolvedFunction function, MethodVisitor mv) {
-        CompiledFunction compiled = functionParser.parse(function);
-        System.out.println("[===="+compiled.getName()+"====]");
-        compiled.getInstructions().forEach(System.out::println);
-        mv.visitLabel(new Label());
-        for(ThothInstruction insn : compiled.getInstructions()) {
-            if(insn instanceof LoadTextInstruction) {
-                String text = ((LoadTextInstruction) insn).getText();
-                mv.visitTypeInsn(NEW, TEXT_VALUE_TYPE.getInternalName());
-                mv.visitInsn(DUP);
-                mv.visitLdcInsn(text);
-                mv.visitMethodInsn(INVOKESPECIAL, VALUE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, STRING_TYPE), false);
-            } else if(insn instanceof LoadArgumentInstruction) {
-                int varIndex = ((LoadArgumentInstruction) insn).getIndex()+1;
-                mv.visitVarInsn(ALOAD, varIndex);
-            } else if(insn instanceof FunctionCallInstruction) {
-                FunctionCallInstruction callInstruction = (FunctionCallInstruction) insn;
-                handleFunctionCall(callInstruction.getOwner().getName(), callInstruction.getName(), callInstruction.getArgumentCount(), mv);
-            } else if(insn instanceof NativeCallInstruction) {
-                NativeCallInstruction callInstruction = (NativeCallInstruction)insn;
-                for(int i = 0;i<function.getArgumentNames().length;i++) {
-                    mv.visitVarInsn(ALOAD, i+1);
-                }
-                handleFunctionCall(callInstruction.getNativeLocation(), callInstruction.getCaller().getName(), callInstruction.getCaller().getArgumentNames().length, mv);
-            }
-        }
-        mv.visitLabel(new Label());
-        // TODO: Actually compile
+    private int handleLdText(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        String text = ((LoadTextInstruction) insn).getText();
+        mv.visitTypeInsn(NEW, TEXT_VALUE_TYPE.getInternalName());
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(text);
+        mv.visitMethodInsn(INVOKESPECIAL, VALUE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, STRING_TYPE), false);
+        return 1;
     }
 
-    private void handleFunctionCall(String owner, String functionName, int argCount, MethodVisitor mv) {
+    private int handleLdBool(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        LoadBooleanInstruction booleanInstruction = (LoadBooleanInstruction) insn;
+        boolean val = booleanInstruction.getValue();
+        if(val) {
+            mv.visitInsn(ICONST_1); // Loads true (1) on the stack
+        } else {
+            mv.visitInsn(ICONST_0); // Loads false (0) on the stack
+        }
+        return 1;
+    }
+
+    private int handleLdVar(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        int varIndex = ((LoadArgumentInstruction) insn).getIndex()+1;
+        mv.visitVarInsn(ALOAD, varIndex);
+        return 1;
+    }
+
+    private int handleFuncCall(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        FunctionCallInstruction callInstruction = (FunctionCallInstruction) insn;
+        createFunctionCall(callInstruction.getOwner().getName(), callInstruction.getName(), callInstruction.getArgumentCount(), mv);
+        return -callInstruction.getArgumentCount()+1;
+    }
+
+    private int handleNativeCall(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        NativeCallInstruction callInstruction = (NativeCallInstruction)insn;
+        for(int i = 0;i<function.getArgumentNames().length;i++) {
+            mv.visitVarInsn(ALOAD, i+1);
+        }
+        createFunctionCall(callInstruction.getNativeLocation(), callInstruction.getCaller().getName(), callInstruction.getCaller().getArgumentNames().length, mv);
+        return 0;
+    }
+
+    private void compileFunction(ResolvedFunction function, MethodVisitor mv) {
+        try {
+            int stack = 0;
+            CompiledFunction compiled = functionParser.parse(function);
+            System.out.println("[====" + compiled.getName() + "====]");
+            compiled.getInstructions().forEach(System.out::println);
+            mv.visitLabel(new Label());
+            for(ThothInstruction insn : compiled.getInstructions()) {
+                InstructionHandler handler = getHandler(insn.getClass());
+                if(handler != null) {
+                    stack += handler.compile(function, mv, insn);
+                }
+            }
+            mv.visitLabel(new Label());
+            for(;stack>0;stack--) {
+
+            }
+            mv.visitLabel(new Label());
+        } catch (ThothCompileError err) {
+            getErrors().add(err);
+        }
+    }
+
+    private InstructionHandler getHandler(Class<? extends ThothInstruction> insnClass) {
+        return insnHandlers.get(insnClass);
+    }
+
+    private void createFunctionCall(String owner, String functionName, int argCount, MethodVisitor mv) {
         Type type = Type.getType(owner.replace('.', '/'));
         Type[] argTypes = new Type[argCount];
         for(int i = 0;i<argTypes.length;i++) {
             argTypes[i] = VALUE_TYPE;
         }
         mv.visitMethodInsn(INVOKESTATIC, type.getInternalName(), functionName, Type.getMethodDescriptor(VALUE_TYPE, argTypes), false);
-        //mv.visitInsn(POP); // TODO: remove
     }
 
     private void buildInitHandles(ClassWriter classWriter, Type classType, ResolvedClass clazz) {

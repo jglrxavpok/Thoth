@@ -35,39 +35,13 @@ public class FunctionParser {
                 functionCalls.push(functionName);
             } else if(read == ')' && !inString) {
                 String functionName = functionCalls.pop();
-                if(functionName.equals("native")) {
-                    if(instructions.size() >= 1) {
-                        ThothInstruction previous = instructions.remove(instructions.size() - 1);
-                        if(previous instanceof LoadTextInstruction) {
-                            LoadTextInstruction text = (LoadTextInstruction)previous;
-                            String location = text.getText();
-                            instructions.add(new NativeCallInstruction(function, location));
-                        } else {
-                            throw new ThothCompileError("native(location) takes only one parameter, and it must be a constant. Found: "+previous, -1,-1); // TODO: proper line number
-                        }
-                    } else {
-                        throw new ThothCompileError("Cannot call native(location) with no arguments", -1,-1); // TODO: proper line number
-                    }
-                } else {
-                    FunctionInfos infos = findInfos(function.getOwner(), functionName);
-                    instructions.add(new FunctionCallInstruction(infos.getOwner(), functionName, infos.getArgCount()));
-                }
+                String arg = buffer.toString();
+                handleArgsAndConstants(arg, function, instructions);
+                handleFunction(functionName, function, instructions);
+                empty(buffer);
             } else if(read == ' ' && !inString) {
                 String arg = buffer.toString();
-                if(!arg.isEmpty()) {
-                    int argIndex = -1;
-                    for (int i = 0; i < function.getArgumentNames().length; i++) {
-                        String n = function.getArgumentNames()[i];
-                        if (n.equals(arg)) {
-                            argIndex = i;
-                            break;
-                        }
-                    }
-                    if (argIndex == -1) {
-                        throw new ThothCompileError("Could not find argument named " + arg, -1, -1); // TODO: proper line number
-                    }
-                    instructions.add(new LoadArgumentInstruction(argIndex));
-                }
+                handleArgsAndConstants(arg, function, instructions);
                 empty(buffer);
             } else {
                 buffer.append(read);
@@ -76,7 +50,17 @@ public class FunctionParser {
         }
 
         String arg = buffer.toString();
+        handleArgsAndConstants(arg, function, instructions);
+        return result;
+    }
+
+    private void handleArgsAndConstants(String arg, ResolvedFunction function, List<ThothInstruction> instructions) {
         if(!arg.isEmpty()) {
+            ThothInstruction insn = loadConstant(arg, function, instructions);
+            if(insn != null) { // There is an instruction for this
+                instructions.add(insn);
+                return;
+            }
             int argIndex = -1;
             for (int i = 0; i < function.getArgumentNames().length; i++) {
                 String n = function.getArgumentNames()[i];
@@ -90,7 +74,41 @@ public class FunctionParser {
             }
             instructions.add(new LoadArgumentInstruction(argIndex));
         }
-        return result;
+    }
+
+    private ThothInstruction loadConstant(String arg, ResolvedFunction function, List<ThothInstruction> instructions) {
+        switch (arg) {
+            case "false":
+            case "False":
+            case "FALSE":
+                return new LoadBooleanInstruction(false);
+
+            case "true":
+            case "True":
+            case "TRUE":
+                return new LoadBooleanInstruction(true);
+        }
+        return null;
+    }
+
+    private void handleFunction(String functionName, ResolvedFunction function, List<ThothInstruction> instructions) {
+        if(functionName.equals("native")) {
+            if(instructions.size() >= 1) {
+                ThothInstruction previous = instructions.remove(instructions.size() - 1);
+                if(previous instanceof LoadTextInstruction) {
+                    LoadTextInstruction text = (LoadTextInstruction)previous;
+                    String location = text.getText();
+                    instructions.add(new NativeCallInstruction(function, location));
+                } else {
+                    throw new ThothCompileError("native(location) takes only one parameter, and it must be a constant. Found: "+previous, -1,-1); // TODO: proper line number
+                }
+            } else {
+                throw new ThothCompileError("Cannot call native(location) with no arguments", -1,-1); // TODO: proper line number
+            }
+        } else {
+            FunctionInfos infos = findInfos(function.getOwner(), functionName);
+            instructions.add(new FunctionCallInstruction(infos.getOwner(), functionName, infos.getArgCount()));
+        }
     }
 
     private FunctionInfos findInfos(ResolvedClass owner, String functionName) {
@@ -104,7 +122,7 @@ public class FunctionParser {
             if(f.getName().equals(functionName))
                 return new FunctionInfos(owner, f.getArgumentNames().length);
         }
-        return null;
+        throw new ThothCompileError("No method found with name "+functionName, -1, -1);
     }
 
     private void empty(StringBuilder buffer) {

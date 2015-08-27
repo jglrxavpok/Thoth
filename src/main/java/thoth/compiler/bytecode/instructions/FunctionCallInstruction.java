@@ -2,6 +2,8 @@ package thoth.compiler.bytecode.instructions;
 
 import thoth.compiler.resolver.ResolvedClass;
 
+import java.util.Objects;
+
 public class FunctionCallInstruction extends ThothInstruction {
 
     private final ResolvedClass owner;
@@ -10,8 +12,8 @@ public class FunctionCallInstruction extends ThothInstruction {
 
     public FunctionCallInstruction(ResolvedClass owner, String name, int argumentCount) {
         super();
-        this.owner = owner;
-        this.name = name;
+        this.owner = Objects.requireNonNull(owner);
+        this.name = Objects.requireNonNull(name);
         this.argumentCount = argumentCount;
     }
 
