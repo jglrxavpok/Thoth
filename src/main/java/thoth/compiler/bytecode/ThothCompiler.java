@@ -62,26 +62,43 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         Type classType = Type.getObjectType(clazz.getName().replace('.', '/'));
         String superName = SET_TYPE.getInternalName();
-        if(!clazz.isTranslationSet()) {
+        if(clazz.getClassType() != ClassType.TRANSLATION_SET) {
             superName = OBJECT_TYPE.getInternalName();
         }
         classWriter.visit(V1_8, ACC_PUBLIC | ACC_FINAL, classType.getInternalName(), null, superName, new String[0]);
         classWriter.visitSource(clazz.getSourceFile(), null);
 
-        if(clazz.isTranslationSet()) {
+        String annotDesc = null;
+        switch(clazz.getClassType()) {
+            case LANGUAGE:
+                annotDesc = Type.getDescriptor(LanguageClass.class);
+                break;
+
+            case TRANSLATION_SET:
+                annotDesc = Type.getDescriptor(TranslationSetClass.class);
+                break;
+
+            case UTILIY:
+                annotDesc = Type.getDescriptor(UtilityClass.class);
+                break;
+        }
+        AnnotationVisitor visitor = classWriter.visitAnnotation(annotDesc, true);
+        visitor.visitEnd();
+
+        if(clazz.getClassType() == ClassType.TRANSLATION_SET) {
             classWriter.visitField(ACC_PRIVATE, "_builder", BUILDER_TYPE.getDescriptor(), null, null);
             classWriter.visitField(ACC_PRIVATE, "_cache", CACHE_TYPE.getDescriptor(), "Ljava/util/HashMap<Ljava/lang/String;Lthoth/runtime/Translation;>;", null);
         }
 
         buildConstructor(classWriter, classType, clazz);
-        if(clazz.isTranslationSet()) {
+        if(clazz.getClassType() == ClassType.TRANSLATION_SET) {
             buildInitHandles(classWriter, classType, clazz);
         }
 
         for(ResolvedFunction function : clazz.getFunctions()) {
             int access = ACC_PUBLIC;
             int localIndex = 0;
-            if(!clazz.isTranslationSet()) {
+            if(clazz.getClassType() != ClassType.TRANSLATION_SET) {
                 access |= ACC_STATIC;
             } else {
                 localIndex = 1;
@@ -143,7 +160,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
     }
 
     private int handleLdVar(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
-        int offset = function.getOwner().isTranslationSet() ? 1 : 0;
+        int offset = function.getOwner().getClassType() == ClassType.TRANSLATION_SET ? 1 : 0;
         int varIndex = ((LoadArgumentInstruction) insn).getIndex()+offset;
         mv.visitVarInsn(ALOAD, varIndex);
         return 1;
@@ -157,7 +174,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
 
     private int handleNativeCall(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
         NativeCallInstruction callInstruction = (NativeCallInstruction)insn;
-        int offset = function.getOwner().isTranslationSet() ? 1 : 0;
+        int offset = function.getOwner().getClassType() == ClassType.TRANSLATION_SET ? 1 : 0;
         for(int i = 0;i<function.getArgumentNames().length;i++) {
             mv.visitVarInsn(ALOAD, i+offset);
         }
@@ -260,14 +277,14 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
 
     private void buildConstructor(ClassWriter classWriter, Type classType, ResolvedClass clazz) {
         int access = ACC_PRIVATE;
-        if(clazz.isTranslationSet()) {
+        if(clazz.getClassType() == ClassType.TRANSLATION_SET) {
             access = ACC_PUBLIC;
         }
         MethodVisitor mv = classWriter.visitMethod(access, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), null, new String[0]);
         mv.visitCode();
 
         mv.visitLabel(new Label());
-        if(clazz.isTranslationSet()) {
+        if(clazz.getClassType() == ClassType.TRANSLATION_SET) {
             // Call super constructor from TranslationSet
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(INVOKESPECIAL, SET_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);

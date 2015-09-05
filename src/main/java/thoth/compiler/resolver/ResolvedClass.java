@@ -47,12 +47,4 @@ public class ResolvedClass {
         return sourceFile;
     }
 
-    /**
-     * Will be removed
-     * @return
-     */
-    @Deprecated
-    public boolean isTranslationSet() {
-        return classType == ClassType.TRANSLATION_SET;
-    }
 }
