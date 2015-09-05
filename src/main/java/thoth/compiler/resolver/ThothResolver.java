@@ -101,7 +101,7 @@ public class ThothResolver extends ThothCompilePhase {
                 imports.add(ref);
             }
             List<ResolvedFunction> functions = new ArrayList<>();
-            ResolvedClass resolvedClass = new ResolvedClass(parsedClass.getName(), parsedClass.getSourceFile(), imports, parsedClass.getUserTypes(), functions, parsedClass.isTranslationSet());
+            ResolvedClass resolvedClass = new ResolvedClass(parsedClass.getName(), parsedClass.getSourceFile(), imports, parsedClass.getUserTypes(), functions, parsedClass.getClassType());
             resolvedClasses[i] = resolvedClass;
         }
 

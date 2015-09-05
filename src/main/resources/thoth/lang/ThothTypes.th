@@ -1,8 +1,7 @@
 /**
 * This class provides default types for Thoth function. They should not be overwritten.
 */
-isTranslationSet false
-class thoth.lang.ThothTypes
+utility class thoth.lang.ThothTypes
 
 typedef Neutral n
 typedef Feminine f

@@ -1,8 +1,7 @@
 /**
 * This class provides default operations for Thoth
 */
-isTranslationSet false
-class thoth.lang.Operations
+utility class thoth.lang.Operations
 
 def capitalize(arg) = native("thoth.lang.DefaultOperations")
 

@@ -1,6 +1,7 @@
 package thoth.compiler.parser;
 
 import thoth.compiler.*;
+import thoth.runtime.ClassType;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -25,7 +26,6 @@ public class ThothParser extends ThothCompilePhase {
     private final List<String> imports;
     private final List<ThothType> userTypes;
     private final List<ParsedFunction> functions;
-    private boolean isTranslationSet;
     private String code;
     private String sourceFile;
     private CompilerOptions options;
@@ -36,6 +36,7 @@ public class ThothParser extends ThothCompilePhase {
     private int column;
     private String currentClassName;
     private ParsedClass parsedClass;
+    private ClassType classType;
 
     public ThothParser(String code, String sourceFile) {
         this(code, sourceFile, CompilerOptions.copyDefault());
@@ -49,7 +50,6 @@ public class ThothParser extends ThothCompilePhase {
         imports = new LinkedList<>();
         userTypes = new LinkedList<>();
         functions = new LinkedList<>();
-        isTranslationSet = true;
         line = 1;
     }
 
@@ -59,7 +59,29 @@ public class ThothParser extends ThothCompilePhase {
             index--; // TODO: Check if works*/
             String start = readUntil(' ', '\n');
             switch (start) {
+
+                case "language": {
+                    String read = readUntil(' ', '\n');
+                    if (!read.equals("class")) {
+                        newError("Expected class keyword, found " + read);
+                    }
+                    classType = ClassType.LANGUAGE;
+                    readClassName();
+                }
+                    break;
+
+                case "utility": {
+                    String read = readUntil(' ', '\n');
+                    if (!read.equals("class")) {
+                        newError("Expected class keyword, found " + read);
+                    }
+                    classType = ClassType.UTILIY;
+                    readClassName();
+                }
+                    break;
+
                 case "class":
+                    classType = ClassType.TRANSLATION_SET;
                     readClassName();
                     break;
 
@@ -73,11 +95,6 @@ public class ThothParser extends ThothCompilePhase {
 
                 case "def":
                     readFunctionDeclaration();
-                    break;
-
-                case "isTranslationSet":
-                    String read = readUntil(' ', '\n');
-                    isTranslationSet = read.equalsIgnoreCase("true");
                     break;
 
                 case "":
@@ -101,7 +118,7 @@ public class ThothParser extends ThothCompilePhase {
         if(currentClassName == null) {
             newError("Class name not found");
         } else {
-            parsedClass = new ParsedClass(getClassName(), sourceFile, getImports(), getUserDefinedTypes(), getFunctions(), isTranslationSet);
+            parsedClass = new ParsedClass(getClassName(), sourceFile, getImports(), getUserDefinedTypes(), getFunctions(), classType);
         }
     }
 

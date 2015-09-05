@@ -1,6 +1,7 @@
 package thoth.compiler.parser;
 
 import thoth.compiler.ThothType;
+import thoth.runtime.ClassType;
 
 import java.util.List;
 
@@ -11,10 +12,10 @@ public class ParsedClass {
     private final List<String> imports;
     private final List<ThothType> userTypes;
     private final List<ParsedFunction> functions;
-    private final boolean isTranslationSet;
+    private final ClassType classType;
 
-    ParsedClass(String name, String sourceFile, List<String> imports, List<ThothType> userTypes, List<ParsedFunction> functions, boolean isTranslationSet) {
-        this.isTranslationSet = isTranslationSet;
+    ParsedClass(String name, String sourceFile, List<String> imports, List<ThothType> userTypes, List<ParsedFunction> functions, ClassType classType) {
+        this.classType = classType;
         this.name = name;
         this.sourceFile = sourceFile;
         this.imports = imports;
@@ -22,8 +23,8 @@ public class ParsedClass {
         this.functions = functions;
     }
 
-    public boolean isTranslationSet() {
-        return isTranslationSet;
+    public ClassType getClassType() {
+        return classType;
     }
 
     public String getName() {
