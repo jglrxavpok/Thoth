@@ -2,6 +2,7 @@ package thoth.compiler.bytecode;
 
 import org.objectweb.asm.*;
 import org.objectweb.asm.util.CheckClassAdapter;
+import thoth.compiler.CompilerOptions;
 import thoth.compiler.ThothCompileError;
 import thoth.compiler.ThothCompilePhase;
 import thoth.compiler.bytecode.instructions.*;
@@ -37,8 +38,14 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private final FunctionParser functionParser;
     private final HashMap<Class<? extends ThothInstruction>, InstructionHandler> insnHandlers;
+    private final CompilerOptions options;
 
     public ThothCompiler() {
+        this(CompilerOptions.copyDefault());
+    }
+
+    public ThothCompiler(CompilerOptions options) {
+        this.options = options;
         functionParser = new FunctionParser();
         insnHandlers = new HashMap<>();
 

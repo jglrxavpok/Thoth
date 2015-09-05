@@ -1,6 +1,7 @@
 package thoth.compiler.resolver;
 
 import thoth.Utils;
+import thoth.compiler.CompilerOptions;
 import thoth.compiler.ThothCompilePhase;
 import thoth.compiler.ThothType;
 import thoth.compiler.parser.ParsedClass;
@@ -25,7 +26,7 @@ public class ThothResolver extends ThothCompilePhase {
                 ParsedClass typeClass = parse("thoth.lang.ThothTypes");
                 ParsedClass operationsClass = parse("thoth.lang.Operations");
 
-                ThothResolver resolver = createEmpty(typeClass, operationsClass);
+                ThothResolver resolver = createEmpty(CompilerOptions.copyDefault(), typeClass, operationsClass);
                 resolver.resolve();
                 baseClasses = resolver.getResolvedClasses();
             } catch (IOException e) {
@@ -48,20 +49,26 @@ public class ThothResolver extends ThothCompilePhase {
         parser.getErrors().forEach(Throwable::printStackTrace);
     }
 
+    public static ThothResolver createWithDefaultClasses(CompilerOptions options, ParsedClass... classes) {
+        return new ThothResolver(getBaseClasses(), options, classes);
+    }
+
     public static ThothResolver createWithDefaultClasses(ParsedClass... classes) {
-        return new ThothResolver(getBaseClasses(), classes);
+        return createWithDefaultClasses(CompilerOptions.copyDefault(), classes);
     }
 
-    public static ThothResolver createEmpty(ParsedClass... classes) {
-        return new ThothResolver(new ResolvedClass[0], classes);
+    public static ThothResolver createEmpty(CompilerOptions options, ParsedClass... classes) {
+        return new ThothResolver(new ResolvedClass[0], options, classes);
     }
 
+    private final CompilerOptions options;
     private final ResolvedClass[] resolvedClasses;
     private final ParsedClass[] parsed;
     private final ResolvedClass[] referenceClasses;
     private final List<ThothType> types;
 
-    public ThothResolver(ResolvedClass[] referenceClasses, ParsedClass... classes) {
+    public ThothResolver(ResolvedClass[] referenceClasses, CompilerOptions options, ParsedClass... classes) {
+        this.options = options;
         types = new ArrayList<>();
         this.referenceClasses = referenceClasses;
         addTypes(referenceClasses);

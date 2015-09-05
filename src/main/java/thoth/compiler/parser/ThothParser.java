@@ -1,9 +1,6 @@
 package thoth.compiler.parser;
 
-import thoth.compiler.ThothCompileError;
-import thoth.compiler.ThothCompilePhase;
-import thoth.compiler.ThothType;
-import thoth.compiler.ThothWarning;
+import thoth.compiler.*;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -31,6 +28,7 @@ public class ThothParser extends ThothCompilePhase {
     private boolean isTranslationSet;
     private String code;
     private String sourceFile;
+    private CompilerOptions options;
     private int index;
     private char[] chars;
     private boolean eof;
@@ -40,8 +38,13 @@ public class ThothParser extends ThothCompilePhase {
     private ParsedClass parsedClass;
 
     public ThothParser(String code, String sourceFile) {
+        this(code, sourceFile, CompilerOptions.copyDefault());
+    }
+
+    public ThothParser(String code, String sourceFile, CompilerOptions options) {
         this.code = code;
         this.sourceFile = sourceFile;
+        this.options = options;
         chars = code.toCharArray();
         imports = new LinkedList<>();
         userTypes = new LinkedList<>();
