@@ -5,6 +5,10 @@ import thoth.compiler.bytecode.instructions.ThothInstruction;
 
 import java.util.List;
 
+/**
+ * <h1>Data class</h1>
+ * Represents a function that has been prepared to be compiled to bytecode.
+ */
 public class CompiledFunction {
 
     private final String name;

@@ -18,9 +18,6 @@ Syntax
 ## Declaring a Thoth class
 You need to first include the class header at the top of the file: ``class package.YourClassName``
 
-This class header is actually optional, if you omit it, the class name will be the first 5 characters of the file.
-
-
 ## Declaring a function/translation
 In order to declare a function, use the ``def`` keyword followed by the function name and, 
 if present, the arguments and the return type as following:
@@ -50,20 +47,19 @@ preceding the actual code.
 Example:
 
 ```
-def helloWorld=Hello world!
+def helloWorld="Hello world!"
 ```
 
 Calling this function will return a neutral Translation object containing "Hello world!"
  
 
 If you want to use multiple functions in the same file (which you'll probably want), 
-you need to specify the end of the function by adding the ``[end]`` keyword (it will be omitted in the rest of 
-explanation if we're only using a single function as an example):
+just add a new definition:
 
 ```
-def functionA=Hello from function A![end]
+def functionA=Hello from function A!
 
-def functionB=Hello from function B![end]
+def functionB=Hello from function B!
 ```
 
 ## Using an argument inside a function body
@@ -73,7 +69,7 @@ is considered plain text and will be treated like it: no processing will go thro
 If you want to embed code and use arguments inside this body, you will need to put it between '|'. For example:
 
 ```
-def echo(arg)=You said |arg|!
+def echo(arg)="You said "arg"!"
 ```
 
 The 'echo' function will output "You said " and will concatenate the value of 'arg' to it.

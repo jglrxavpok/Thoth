@@ -16,8 +16,12 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 
 /**
- * ThothCompiler is stateless and can be multi-threaded
+ * Compiles previously parsed and resolved Thoth code to bytecode.<br/>
+ * This process actually starts by checking the {@link ClassType Thoth class type} and creating a public constructor if needed.<br/>
+ * Then it compiles the functions. Finishes by verifying the generated class file to be sure nothing went wrong.<br/>
+ * Note: ThothCompiler is stateless and can be multi-threaded
  */
+// aka. "Where the magic happens"
 public class ThothCompiler extends ThothCompilePhase implements Opcodes {
 
     private static final Type SET_TYPE = Type.getType(TranslationSet.class);

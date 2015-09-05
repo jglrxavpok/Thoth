@@ -1,17 +1,25 @@
 ```
-def bar:m=Bar
+def bar:m="Bar"
 def foo(arg):f=
-    Foo
-    |arg->f? {|
-        bar \| \| |!| Bar! 
-    |}|
+    "Foo"
+    if(arg->f) {
+        "bar | | "
+    } else {
+        "Bar!" 
+    }
     
-def test:p=Diamonds
+def test:p="Diamonds"
 def giveCommand(player, item):f=
-    Player |player| gave |item->p? {|
-        multiple
-        |!|
-        a|vowelstart(item)? {|n |}|
-        |item|
-        !
+    "Player "player "gave "
+    if(item->p) {
+        "multiple "
+    } else {
+        "a " 
+        if(vowelstart(item)) {
+            "n"
+        } else {
+        }
+    }
+    item" !"
+    
 ```

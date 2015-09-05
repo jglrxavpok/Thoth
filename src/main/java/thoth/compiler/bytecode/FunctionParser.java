@@ -28,6 +28,10 @@ public class FunctionParser {
                     String text = buffer.toString();
                     instructions.add(new LoadTextInstruction(text));
                     empty(buffer);
+                } else { // Starting a string, check for arguments and/or constants
+                    String arg = buffer.toString();
+                    handleArgsAndConstants(arg, function, instructions);
+                    empty(buffer);
                 }
             } else if(read == '(' && !inString) {
                 String functionName = buffer.toString();
