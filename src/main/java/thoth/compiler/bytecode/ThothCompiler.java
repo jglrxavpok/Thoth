@@ -5,6 +5,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import thoth.compiler.CompilerOptions;
 import thoth.compiler.ThothCompileError;
 import thoth.compiler.ThothCompilePhase;
+import thoth.compiler.ThothType;
 import thoth.compiler.bytecode.instructions.*;
 import thoth.compiler.resolver.ResolvedClass;
 import thoth.compiler.resolver.ResolvedFunction;
@@ -103,16 +104,44 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
             } else {
                 localIndex = 1;
             }
-            MethodVisitor mv = classWriter.visitMethod(access, function.getName(), generateMethodType(function), null, null);
-            mv.visitCode();
-            for(String n : function.getArgumentNames()) {
-                mv.visitParameter(n, ACC_FINAL);
-                mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
+            if(options.cachesZeroArgFunctions() && function.getArgumentNames().length == 0) {
+                access = ACC_PRIVATE;
+                MethodVisitor mv = classWriter.visitMethod(access, "_cacheHelper_"+function.getName(), generateMethodType(function), null, null);
+                mv.visitCode();
+                for(String n : function.getArgumentNames()) {
+                    mv.visitParameter(n, ACC_FINAL);
+                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
+                }
+                compileFunction(function, classType, clazz, mv, localIndex);
+                mv.visitInsn(ARETURN);
+                mv.visitMaxs(0, 0);
+                mv.visitEnd();
+
+                // Compiles a lookup
+                mv = classWriter.visitMethod(access, function.getName(), generateMethodType(function), null, null);
+                addTypeAnnotations(function, mv);
+                mv.visitCode();
+                for(String n : function.getArgumentNames()) {
+                    mv.visitParameter(n, ACC_FINAL);
+                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
+                }
+                compileCachedFunction(function, classType, clazz, mv, localIndex);
+                mv.visitInsn(ARETURN);
+                mv.visitMaxs(0, 0);
+                mv.visitEnd();
+            } else {
+                MethodVisitor mv = classWriter.visitMethod(access, function.getName(), generateMethodType(function), null, null);
+                addTypeAnnotations(function, mv);
+                mv.visitCode();
+                for(String n : function.getArgumentNames()) {
+                    mv.visitParameter(n, ACC_FINAL);
+                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
+                }
+                compileFunction(function, classType, clazz, mv, localIndex);
+                mv.visitInsn(ARETURN);
+                mv.visitMaxs(0, 0);
+                mv.visitEnd();
             }
-            compileFunction(function, classType, clazz, mv, localIndex);
-            mv.visitInsn(ARETURN);
-            mv.visitMaxs(0, 0);
-            mv.visitEnd();
         }
         classWriter.visitEnd();
         byte[] byteArray = classWriter.toByteArray();
@@ -121,6 +150,25 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
             CheckClassAdapter.verify(new ClassReader(byteArray), true, pw);
         }
         return byteArray;
+    }
+
+    private void addTypeAnnotations(ResolvedFunction function, MethodVisitor mv) {
+        AnnotationVisitor av = mv.visitAnnotation(Type.getDescriptor(Types.class), true);
+        AnnotationVisitor arrayVisitor = av.visitArray("value");
+        for(ThothType type : function.getTypes()) {
+            arrayVisitor.visit(null, type.getName());
+        }
+        arrayVisitor.visitEnd();
+        av.visitEnd();
+    }
+
+    private void compileCachedFunction(ResolvedFunction function, Type classType, ResolvedClass clazz, MethodVisitor mv, int localIndex) {
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
+        mv.visitLdcInsn(function.getName());
+        mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "get", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE), false);
+        mv.visitTypeInsn(CHECKCAST, VALUE_TYPE.getInternalName());
+        mv.visitInsn(ARETURN);
     }
 
     private String generateMethodType(ResolvedFunction function) {
@@ -304,6 +352,21 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
             mv.visitInsn(DUP);
             mv.visitMethodInsn(INVOKESPECIAL, CACHE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
             mv.visitFieldInsn(PUTFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
+
+            if(options.cachesZeroArgFunctions()) {
+                for(ResolvedFunction func : clazz.getFunctions()) {
+                    if(func.getArgumentCount() == 0) {
+                        mv.visitVarInsn(ALOAD, 0);
+                        mv.visitFieldInsn(GETFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
+                        mv.visitLdcInsn(func.getName());
+                        mv.visitVarInsn(ALOAD, 0);
+                        mv.visitMethodInsn(INVOKEVIRTUAL, classType.getInternalName(), "_cacheHelper_"+func.getName(), Type.getMethodDescriptor(VALUE_TYPE), false);
+                        mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "put", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE, OBJECT_TYPE), false);
+                        mv.visitInsn(POP);
+                    }
+                }
+            }
+
         } else {
             // Call super constructor from Object
             mv.visitVarInsn(ALOAD, 0);
@@ -311,6 +374,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         }
         mv.visitInsn(RETURN);
         mv.visitLabel(new Label());
+
         // TODO: Cache functions with 0 arguments
         mv.visitMaxs(0, 0); // Let ASM compute maxs and frames
         mv.visitEnd();

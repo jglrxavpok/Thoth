@@ -4,6 +4,8 @@ public class CompilerOptions {
     private final boolean mutable;
     private int bufferSize;
     private String encoding;
+    private boolean cacheZeroArg;
+    private boolean cacheOther;
 
     private CompilerOptions(boolean mutable, CompilerOptions options) {
         this.mutable = mutable;
@@ -28,6 +30,18 @@ public class CompilerOptions {
         return this;
     }
 
+    public CompilerOptions cachesZeroArgFunctions(boolean cache) {
+        checkMutable();
+        cacheZeroArg = cache;
+        return this;
+    }
+
+    public CompilerOptions cachesAllFunctions(boolean cache) {
+        checkMutable();
+        cacheOther = cache;
+        return this;
+    }
+
     private void checkMutable() {
         if(!mutable)
             throw new IllegalStateException("Tried to change state while instance is immutable");
@@ -48,5 +62,13 @@ public class CompilerOptions {
 
     public int getBufferSize() {
         return bufferSize;
+    }
+
+    public boolean cachesZeroArgFunctions() {
+        return cacheZeroArg;
+    }
+
+    public boolean cachesOtherFunctions() {
+        return cacheOther;
     }
 }

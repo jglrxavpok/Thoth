@@ -1,5 +1,6 @@
 import org.junit.Test;
 import thoth.Utils;
+import thoth.compiler.CompilerOptions;
 import thoth.compiler.ThothCompilePhase;
 import thoth.compiler.ThothType;
 import thoth.compiler.bytecode.ThothCompiler;
@@ -22,7 +23,8 @@ public class CompilerTests {
     public void simpleCompile() throws IOException, InvocationTargetException, IllegalAccessException, InstantiationException {
         String thothCode = "class ClassA\n" +
                 "import thoth.lang.ThothTypes\n" +
-                "def test(a, b):Neutral = toUpperCase(\"MyCode\")_a_true_False_TRUE_FALSE\n";
+                "def test(a, b):Neutral = toUpperCase(\"MyCode\")_a_true_False_TRUE_FALSE\n" +
+                "def test2:Feminine&Plural = true\n";
         ThothParser parser = new ThothParser(thothCode, "ClassA.th");
         parser.parse();
         printAllWarningsAndErrors(parser);
@@ -31,7 +33,8 @@ public class CompilerTests {
         resolver.resolve();
         printAllWarningsAndErrors(resolver);
         ResolvedClass resolvedClass = resolver.getResolvedClasses()[0];
-        ThothCompiler compiler = new ThothCompiler();
+        CompilerOptions options = CompilerOptions.copyDefault().cachesZeroArgFunctions(true);
+        ThothCompiler compiler = new ThothCompiler(options);
         for(ResolvedClass baseClass : ThothResolver.getBaseClasses()) {
             byte[] bytecode = compiler.compile(baseClass);
             File destinationFile = new File(".", "testcompilation/"+baseClass.getName().replace('.', '/')+".class");

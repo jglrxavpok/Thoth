@@ -37,4 +37,7 @@ public class ResolvedFunction {
         return types;
     }
 
+    public int getArgumentCount() {
+        return argumentNames.length;
+    }
 }
