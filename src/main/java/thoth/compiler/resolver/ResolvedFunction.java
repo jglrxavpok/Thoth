@@ -1,6 +1,10 @@
 package thoth.compiler.resolver;
 
+import org.objectweb.asm.Label;
 import thoth.compiler.ThothType;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ResolvedFunction {
     private final String[] argumentNames;
@@ -8,6 +12,7 @@ public class ResolvedFunction {
     private final String code;
     private final ResolvedClass owner;
     private final String name;
+    public final Map<Integer, Label> labelMap;
 
     ResolvedFunction(String name, String[] argumentNames, ThothType[] types, String code, ResolvedClass owner) {
         this.name = name;
@@ -15,6 +20,7 @@ public class ResolvedFunction {
         this.types = types;
         this.code = code;
         this.owner = owner;
+        labelMap = new HashMap<>();
     }
 
     public ResolvedClass getOwner() {
@@ -39,5 +45,9 @@ public class ResolvedFunction {
 
     public int getArgumentCount() {
         return argumentNames.length;
+    }
+
+    public void registerJump(int instructionNumber, Label label) {
+        labelMap.put(instructionNumber, label);
     }
 }

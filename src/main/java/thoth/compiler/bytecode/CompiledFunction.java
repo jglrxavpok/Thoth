@@ -15,12 +15,14 @@ public class CompiledFunction {
     private final String[] arguments;
     private final ThothType[] returnType;
     private final List<ThothInstruction> instructions;
+    private final List<SubFunction> subfunctions;
 
-    CompiledFunction(String name, String[] arguments, ThothType[] returnType, List<ThothInstruction> instructions) {
+    CompiledFunction(String name, String[] arguments, ThothType[] returnType, List<ThothInstruction> instructions, List<SubFunction> subfunctions) {
         this.name = name;
         this.arguments = arguments;
         this.returnType = returnType;
         this.instructions = instructions;
+        this.subfunctions = subfunctions;
     }
 
     public String getName() {
@@ -37,5 +39,9 @@ public class CompiledFunction {
 
     public List<ThothInstruction> getInstructions() {
         return instructions;
+    }
+
+    public List<SubFunction> getSubfunctions() {
+        return subfunctions;
     }
 }

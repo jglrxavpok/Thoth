@@ -9,4 +9,9 @@ public class TextValue extends ThothValue<String> {
     public String convertToString() {
         return getValue();
     }
+
+    @Override
+    public boolean convertToBoolean() {
+        return true;
+    }
 }

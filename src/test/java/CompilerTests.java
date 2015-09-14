@@ -24,7 +24,7 @@ public class CompilerTests {
         String thothCode = "class ClassA\n" +
                 "import thoth.lang.ThothTypes\n" +
                 "def test(a, b):Neutral = toUpperCase(\"MyCode\")_a_true_False_TRUE_FALSE\n" +
-                "def test2:Feminine&Plural = true\n";
+                "def test2:Feminine&Plural = if(true) { \"Blabla\" } \n";
         ThothParser parser = new ThothParser(thothCode, "ClassA.th");
         parser.parse();
         printAllWarningsAndErrors(parser);

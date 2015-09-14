@@ -9,4 +9,9 @@ public class BoolValue extends ThothValue<Boolean> {
     public String convertToString() {
         return String.valueOf(getValue());
     }
+
+    @Override
+    public boolean convertToBoolean() {
+        return getValue();
+    }
 }

@@ -32,6 +32,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
     private static final Type STRING_TYPE = Type.getType(String.class);
     private static final Type VALUE_TYPE = Type.getType(ThothValue.class);
     private static final Type BOOL_VALUE_TYPE = Type.getType(BoolValue.class);
+    private static final Type NULL_VALUE_TYPE = Type.getType(NullValue.class);
     private static final Type TEXT_VALUE_TYPE = Type.getType(TextValue.class);
     private static final Type SPACE_VALUE_TYPE = Type.getType(SpaceValue.class);
     private static final Type TRANSLATION_VALUE_TYPE = Type.getType(TranslationValue.class);
@@ -51,6 +52,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         insnHandlers = new HashMap<>();
 
         // Init handlers
+        insnHandlers.put(ConditionalCallInstruction.class, this::handleCondCall);
         insnHandlers.put(FunctionCallInstruction.class, this::handleFuncCall);
         insnHandlers.put(LoadArgumentInstruction.class, this::handleLdVar);
         insnHandlers.put(LoadBooleanInstruction.class, this::handleLdBool);
@@ -106,41 +108,51 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
             }
             if(options.cachesZeroArgFunctions() && function.getArgumentNames().length == 0) {
                 access = ACC_PRIVATE;
-                MethodVisitor mv = classWriter.visitMethod(access, "_cacheHelper_"+function.getName(), generateMethodType(function), null, null);
-                mv.visitCode();
-                for(String n : function.getArgumentNames()) {
-                    mv.visitParameter(n, ACC_FINAL);
-                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
-                }
-                compileFunction(function, classType, clazz, mv, localIndex);
-                mv.visitInsn(ARETURN);
-                mv.visitMaxs(0, 0);
-                mv.visitEnd();
+                final int acc = access;
+                final int locIndex = localIndex;
+                functionParser.parse(function).forEach(compiled -> {
+                    int _localIndex = locIndex;
+                    MethodVisitor mv = classWriter.visitMethod(acc, "_cacheHelper_" + compiled.getName(), generateMethodType(function), null, null);
+                    mv.visitCode();
+                    for (String n : function.getArgumentNames()) {
+                        mv.visitParameter(n, ACC_FINAL);
+                        mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), _localIndex++);
+                    }
+                    compileFunction(function, compiled, classType, clazz, mv, _localIndex);
+                    mv.visitInsn(ARETURN);
+                    mv.visitMaxs(0, 0);
+                    mv.visitEnd();
 
-                // Compiles a lookup
-                mv = classWriter.visitMethod(access, function.getName(), generateMethodType(function), null, null);
-                addTypeAnnotations(function, mv);
-                mv.visitCode();
-                for(String n : function.getArgumentNames()) {
-                    mv.visitParameter(n, ACC_FINAL);
-                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
-                }
-                compileCachedFunction(function, classType, clazz, mv, localIndex);
-                mv.visitInsn(ARETURN);
-                mv.visitMaxs(0, 0);
-                mv.visitEnd();
+                    // Compiles a lookup
+                    mv = classWriter.visitMethod(acc, compiled.getName(), generateMethodType(function), null, null);
+                    addTypeAnnotations(function, mv);
+                    mv.visitCode();
+                    for (String n : function.getArgumentNames()) {
+                        mv.visitParameter(n, ACC_FINAL);
+                        mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), _localIndex++);
+                    }
+                    compileCachedFunction(compiled, classType, clazz, mv, _localIndex);
+                    mv.visitInsn(ARETURN);
+                    mv.visitMaxs(0, 0);
+                    mv.visitEnd();
+                });
             } else {
-                MethodVisitor mv = classWriter.visitMethod(access, function.getName(), generateMethodType(function), null, null);
-                addTypeAnnotations(function, mv);
-                mv.visitCode();
-                for(String n : function.getArgumentNames()) {
-                    mv.visitParameter(n, ACC_FINAL);
-                    mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), localIndex++);
-                }
-                compileFunction(function, classType, clazz, mv, localIndex);
-                mv.visitInsn(ARETURN);
-                mv.visitMaxs(0, 0);
-                mv.visitEnd();
+                final int acc = access;
+                final int locIndex = localIndex;
+                functionParser.parse(function).forEach(compiled -> {
+                    int _localIndex = locIndex;
+                    MethodVisitor mv = classWriter.visitMethod(acc, compiled.getName(), generateMethodType(function), null, null);
+                    addTypeAnnotations(function, mv);
+                    mv.visitCode();
+                    for (String n : function.getArgumentNames()) {
+                        mv.visitParameter(n, ACC_FINAL);
+                        mv.visitLocalVariable(n, VALUE_TYPE.getDescriptor(), null, new Label(), new Label(), _localIndex++);
+                    }
+                    compileFunction(function, compiled, classType, clazz, mv, _localIndex);
+                    mv.visitInsn(ARETURN);
+                    mv.visitMaxs(0, 0);
+                    mv.visitEnd();
+                });
             }
         }
         classWriter.visitEnd();
@@ -162,7 +174,7 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         av.visitEnd();
     }
 
-    private void compileCachedFunction(ResolvedFunction function, Type classType, ResolvedClass clazz, MethodVisitor mv, int localIndex) {
+    private void compileCachedFunction(CompiledFunction function, Type classType, ResolvedClass clazz, MethodVisitor mv, int localIndex) {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitFieldInsn(GETFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
         mv.visitLdcInsn(function.getName());
@@ -179,8 +191,51 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         return Type.getMethodDescriptor(VALUE_TYPE, arguments);
     }
 
+    private int handleCondCall(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        ConditionalCallInstruction branch = (ConditionalCallInstruction) insn;
+        Label destination = new Label();
+        Label end = new Label();
+        //function.registerJump(branch.instructionNumber, destination);
+        mv.visitMethodInsn(INVOKEVIRTUAL, VALUE_TYPE.getInternalName(), "convertToBoolean", Type.getMethodDescriptor(Type.BOOLEAN_TYPE), false);
+        mv.visitInsn(ICONST_0);
+        mv.visitJumpInsn(IF_ICMPNE, destination);
+        mv.visitLabel(new Label());
+        int offset = 0;
+        if(function.getOwner().getClassType() == ClassType.TRANSLATION_SET) {
+            mv.visitVarInsn(ALOAD, 0); // load this
+            offset++;
+        }
+        for(int i = 0;i<function.getArgumentCount();i++)
+            mv.visitVarInsn(ALOAD, i+offset);
+        Type[] types = new Type[function.getArgumentCount()];
+        for(int i = 0;i<types.length;i++) {
+            types[i] = VALUE_TYPE;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, branch.getCall().getOwner().getName().replace(".", "/"), branch.getCall().getName(), Type.getMethodDescriptor(VALUE_TYPE, types), false);
+        mv.visitJumpInsn(GOTO, end);
+        mv.visitLabel(destination);
+        handleLdEmpty(function, mv, insn);
+        mv.visitLabel(end);
+        return 0;
+    }
+
     private int handleLdSpace(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
         mv.visitMethodInsn(INVOKESTATIC, SPACE_VALUE_TYPE.getInternalName(), "getInstance", Type.getMethodDescriptor(SPACE_VALUE_TYPE), false);
+        return 1;
+    }
+
+    private int handleLdEmpty(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        mv.visitTypeInsn(NEW, TEXT_VALUE_TYPE.getInternalName());
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn("");
+        mv.visitMethodInsn(INVOKESPECIAL, TEXT_VALUE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, STRING_TYPE), false);
+        return 1;
+    }
+
+    private int handleLdNull(ResolvedFunction function, MethodVisitor mv, ThothInstruction insn) {
+        mv.visitTypeInsn(NEW, NULL_VALUE_TYPE.getInternalName());
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, NULL_VALUE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE), false);
         return 1;
     }
 
@@ -230,21 +285,25 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
         return 0;
     }
 
-    private void compileFunction(ResolvedFunction function, Type classType, ResolvedClass clazz, MethodVisitor mv, int localIndex) {
+    private void compileFunction(ResolvedFunction function, CompiledFunction compiled, Type classType, ResolvedClass clazz, MethodVisitor mv, int localIndex) {
         try {
             int stack = 0;
-            CompiledFunction compiled = functionParser.parse(function);
             System.out.println("[====" + compiled.getName() + "====]");
             compiled.getInstructions().forEach(System.out::println);
             mv.visitLabel(new Label());
-            for(ThothInstruction insn : compiled.getInstructions()) {
+            int insnNumber = 0;
+            for (ThothInstruction insn : compiled.getInstructions()) {
                 InstructionHandler handler = getHandler(insn.getClass());
-                if(handler != null) {
+                if (handler != null) {
                     stack += handler.compile(function, mv, insn);
                 }
+                if (function.labelMap.containsKey(insnNumber)) {
+                    mv.visitLabel(function.labelMap.get(insnNumber));
+                }
+                insnNumber++;
             }
             mv.visitLabel(new Label());
-            if(stack > 1) {
+            if (stack >= 1) {
                 int stackStart = localIndex;
                 for (int i = 0; i < stack; i++) {
                     mv.visitVarInsn(ASTORE, localIndex);
@@ -287,6 +346,8 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
                 mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, STRING_TYPE, Type.getType(String[].class)), false);
 
                 mv.visitMethodInsn(INVOKESPECIAL, TRANSLATION_VALUE_TYPE.getInternalName(), "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, TRANSLATION_TYPE), false);
+            } else {
+
             }
             mv.visitLabel(new Label());
         } catch (ThothCompileError err) {
@@ -354,17 +415,15 @@ public class ThothCompiler extends ThothCompilePhase implements Opcodes {
             mv.visitFieldInsn(PUTFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
 
             if(options.cachesZeroArgFunctions()) {
-                for(ResolvedFunction func : clazz.getFunctions()) {
-                    if(func.getArgumentCount() == 0) {
-                        mv.visitVarInsn(ALOAD, 0);
-                        mv.visitFieldInsn(GETFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
-                        mv.visitLdcInsn(func.getName());
-                        mv.visitVarInsn(ALOAD, 0);
-                        mv.visitMethodInsn(INVOKEVIRTUAL, classType.getInternalName(), "_cacheHelper_"+func.getName(), Type.getMethodDescriptor(VALUE_TYPE), false);
-                        mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "put", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE, OBJECT_TYPE), false);
-                        mv.visitInsn(POP);
-                    }
-                }
+                clazz.getFunctions().stream().filter(f -> f.getArgumentCount() == 0).forEach(func -> {
+                    mv.visitVarInsn(ALOAD, 0);
+                    mv.visitFieldInsn(GETFIELD, classType.getInternalName(), "_cache", CACHE_TYPE.getDescriptor());
+                    mv.visitLdcInsn(func.getName());
+                    mv.visitVarInsn(ALOAD, 0);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, classType.getInternalName(), "_cacheHelper_" + func.getName(), Type.getMethodDescriptor(VALUE_TYPE), false);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, CACHE_TYPE.getInternalName(), "put", Type.getMethodDescriptor(OBJECT_TYPE, OBJECT_TYPE, OBJECT_TYPE), false);
+                    mv.visitInsn(POP);
+                });
             }
 
         } else {

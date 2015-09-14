@@ -5,22 +5,36 @@ import thoth.compiler.bytecode.instructions.*;
 import thoth.compiler.resolver.ResolvedClass;
 import thoth.compiler.resolver.ResolvedFunction;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
 public class FunctionParser {
 
-    public CompiledFunction parse(ResolvedFunction function) {
+    public List<CompiledFunction> parse(ResolvedFunction function) {
+        CompiledFunction result = new CompiledFunction(function.getName(), function.getArgumentNames(), function.getTypes(), new ArrayList<>(), new ArrayList<>());
         String code = function.getCode();
-        int index = 0;
-        char[] chars = code.toCharArray();
-        List<ThothInstruction> instructions = new LinkedList<>();
-        CompiledFunction result = new CompiledFunction(function.getName(), function.getArgumentNames(), function.getTypes(), instructions);
-        StringBuilder buffer = new StringBuilder();
+        parseBlock(function, result, 0, code.length());
+        List<CompiledFunction> list = new ArrayList<>();
+        return getAllFunctions(result, list);
+    }
+
+    private List<CompiledFunction> getAllFunctions(CompiledFunction result, List<CompiledFunction> funcs) {
+        funcs.add(result);
+        result.getSubfunctions().forEach(f -> getAllFunctions(f, funcs));
+        return funcs;
+    }
+
+    private int parseBlock(ResolvedFunction function, CompiledFunction destination, int start, int length) {
+        System.out.println("compiling " + destination.getName()+" with code: \n"+function.getCode().substring(start, length+start));
+        List<ThothInstruction> instructions = destination.getInstructions();
+        List<SubFunction> subfunctions = destination.getSubfunctions();
         boolean inString = false;
         Stack<String> functionCalls = new Stack<>();
-        for(;index<chars.length;index++) {
+        String code = function.getCode();
+        char[] chars = code.toCharArray();
+        StringBuilder buffer = new StringBuilder();
+        for(int index = start;index<length+start;index++) {
             char read = chars[index];
             if(read == '"') {
                 inString = !inString;
@@ -41,7 +55,9 @@ public class FunctionParser {
                 String functionName = functionCalls.pop();
                 String arg = buffer.toString();
                 handleArgsAndConstants(arg, function, instructions);
-                handleFunction(functionName, function, instructions);
+                if(!handleBranching(functionName, function, instructions, index, chars)) {
+                    handleFunction(functionName, function, instructions);
+                }
                 empty(buffer);
             } else if(read == ' ' && !inString) {
                 String arg = buffer.toString();
@@ -52,15 +68,60 @@ public class FunctionParser {
                 handleArgsAndConstants(arg, function, instructions);
                 empty(buffer);
                 instructions.add(new LoadSpaceInstruction());
+            } else if(read == '{' && !inString) {
+                // Start inner function
+                SubFunction subfunc = new SubFunction(function.getName()+"$"+subfunctions.size(), function.getArgumentNames());
+                subfunctions.add(subfunc);
+                index += parseBlock(function, subfunc, index+1, findRelativeBracket(index, length, chars));
+
+                ThothInstruction last = instructions.get(instructions.size()-1);
+                if(last instanceof ConditionalCallInstruction) {
+                    ConditionalCallInstruction ins = (ConditionalCallInstruction) last;
+                    ins.setCall(new FunctionCallInstruction(function.getOwner(), subfunc.getName(), function.getArgumentCount()));
+                }
+            } else if(read == '}' && !inString) {
+                // NOP
             } else {
                 buffer.append(read);
             }
-            // TODO
         }
-
         String arg = buffer.toString();
         handleArgsAndConstants(arg, function, instructions);
-        return result;
+
+        return length; // TODO
+    }
+
+    private int findRelativeBracket(int index, int length, char[] chars) {
+        if(chars[index] != '{') {
+            throw new IllegalArgumentException("No opening curly bracket at index "+index);
+        }
+        boolean inString = false;
+        int start = index;
+        int brackets = 0;
+        for(;index<length;index++) {
+            char c = chars[index];
+            System.out.print(c);
+            if(c == '{' && !inString) {
+                brackets++;
+            } else if(c == '}' && !inString) {
+                brackets--;
+                if(brackets == 0) {
+                    return index-start-1;
+                }
+            } else if(c == '"') {
+                inString = !inString;
+            }
+        }
+        System.out.println("not found, "+index+", "+length+", "+brackets);
+        return -1;
+    }
+
+    private boolean handleBranching(String functionName, ResolvedFunction function, List<ThothInstruction> instructions, int index, char[] chars) {
+        if(functionName.equals("if")) {
+            instructions.add(new ConditionalCallInstruction());
+            return true;
+        }
+        return false;
     }
 
     private void handleArgsAndConstants(String arg, ResolvedFunction function, List<ThothInstruction> instructions) {

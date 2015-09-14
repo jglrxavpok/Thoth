@@ -17,4 +17,6 @@ public abstract class ThothValue<T> {
     }
 
     public abstract String convertToString();
+
+    public abstract boolean convertToBoolean();
 }

@@ -9,4 +9,9 @@ public class TranslationValue extends ThothValue<Translation> {
     public String convertToString() {
         return getValue().getRaw();
     }
+
+    @Override
+    public boolean convertToBoolean() {
+        return true;
+    }
 }
